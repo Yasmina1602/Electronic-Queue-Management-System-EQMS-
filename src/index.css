@@ -1,12 +1,16 @@
 @import "tailwindcss";
 
 @layer base {
-  * {
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  html, body, button, input, select, textarea {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   
   .font-mono-receipt {
     font-family: 'Space Mono', monospace, Courier, monospace;
+    font-feature-settings: 'tnum' 1;
   }
 }
 
