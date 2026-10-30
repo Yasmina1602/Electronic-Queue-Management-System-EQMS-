@@ -165,7 +165,7 @@ export function KioskView({ onNavigateStaff }) {
 
                 <div className="mt-8">
                   <h3 className="text-2xl font-black text-slate-900 group-hover:text-blue-700 transition-colors">
-                    Barcha xizmatlar
+                    Xizmatlar
                   </h3>
                   <p className="text-xs font-medium text-slate-500 mt-1.5 line-clamp-2">
                     Kassa, Kreditlar, Omonatlar, Kartalar va ma’lumotlar
@@ -236,7 +236,7 @@ export function KioskView({ onNavigateStaff }) {
                   }`}
                 >
                   <Layers className="w-3.5 h-3.5" />
-                  <span>Barcha xizmatlar ({generalServices.length})</span>
+                  <span>Xizmatlar ({generalServices.length})</span>
                 </button>
                 <button
                   onClick={() => setSelectedCategory('accounting')}
@@ -257,7 +257,7 @@ export function KioskView({ onNavigateStaff }) {
               <h2 className="text-xl sm:text-2xl font-black text-slate-950">
                 {selectedCategory === 'accounting'
                   ? 'Buxgalteriya va Yuridik shaxslar'
-                  : 'Barcha chakana xizmatlar'}
+                  : 'Xizmatlar ro‘yxati'}
               </h2>
               <p className="text-xs text-slate-500 font-medium">
                 Iltimos, kerakli operatsiyani bosing va navbat chekini oling

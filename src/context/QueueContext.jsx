@@ -252,36 +252,104 @@ export function QueueProvider({ children }) {
   /**
    * Next customer call with FIFO, load-balancing, and atomic protection
    */
-  const callNextCustomer = (staffId) => {
-    const staffList = staff || INITIAL_STAFF;
-    const ticketList = tickets || [];
+  const callNextCustomer = (staffId, autoAdvance = false) => {
+    let staffList = staff || INITIAL_STAFF;
+    let ticketList = tickets || [];
 
-    const operator = staffList.find((s) => s.id === staffId);
+    const operator = staffList.find((s) => s.id === staffId) || staffList[0];
     if (!operator) return { success: false, error: 'Xodim topilmadi!' };
 
-    if (operator.status !== STAFF_STATUS.AVAILABLE) {
+    // Auto-unpause if paused and autoAdvance is requested
+    let isPaused = operator.status === STAFF_STATUS.PAUSED;
+
+    // Check if operator already has an active ticket
+    const activeTicket = ticketList.find(
+      (t) =>
+        t.id === operator.currentTicketId ||
+        (t.staffId === operator.id && (t.status === TICKET_STATUS.CALLED || t.status === TICKET_STATUS.IN_SERVICE))
+    );
+
+    let completedTicketNumber = null;
+    if (activeTicket) {
+      if (autoAdvance) {
+        // Complete current active ticket automatically to advance to the next
+        const durationMin = activeTicket.startedAt
+          ? Math.max(1, Math.round((Date.now() - activeTicket.startedAt) / 60000))
+          : 5;
+        completedTicketNumber = activeTicket.ticketNumber;
+        ticketList = ticketList.map((t) =>
+          t.id === activeTicket.id
+            ? { ...t, status: TICKET_STATUS.COMPLETED, completedAt: Date.now() }
+            : t
+        );
+        addAuditLog(
+          'TICKET_COMPLETED',
+          `${activeTicket.ticketNumber} xizmati yakunlandi (avtomatik keyingisiga o‘tildi)`,
+          operator.id,
+          activeTicket.ticketNumber
+        );
+      } else {
+        return {
+          success: false,
+          error: `Avval joriy mijoz (${activeTicket.ticketNumber}) xizmatini yakunlang!`,
+        };
+      }
+    } else if (operator.status !== STAFF_STATUS.AVAILABLE && !autoAdvance) {
       return {
         success: false,
         error: `Mijoz chaqirish uchun xodim "AVAILABLE" (Bo‘sh) holatida bo‘lishi kerak. Joriy holat: ${operator.status}`,
       };
     }
 
-    const eligibleTickets = ticketList.filter(
+    // Find eligible tickets for this operator
+    let eligibleTickets = ticketList.filter(
       (t) =>
         t.status === TICKET_STATUS.WAITING &&
         t.branchId === operator.branchId &&
-        operator.authorizedServiceIds &&
-        operator.authorizedServiceIds.includes(t.serviceId)
+        (!operator.authorizedServiceIds ||
+          operator.authorizedServiceIds.length === 0 ||
+          operator.authorizedServiceIds.includes(t.serviceId))
     );
 
+    // Fallback: if no service-specific ticket, pick any waiting ticket in this branch
     if (eligibleTickets.length === 0) {
+      eligibleTickets = ticketList.filter(
+        (t) => t.status === TICKET_STATUS.WAITING && t.branchId === operator.branchId
+      );
+    }
+
+    if (eligibleTickets.length === 0) {
+      // If we finished an active ticket above, make sure the completed state is saved
+      if (activeTicket && autoAdvance) {
+        const updatedStaff = staffList.map((s) =>
+          s.id === operator.id
+            ? {
+                ...s,
+                status: STAFF_STATUS.AVAILABLE,
+                currentTicketId: null,
+                servedCountToday: (s.servedCountToday || 0) + 1,
+                lastServiceFinishedAt: Date.now(),
+              }
+            : s
+        );
+        setTickets(ticketList);
+        setStaff(updatedStaff);
+        broadcastState(ticketList, updatedStaff);
+        return {
+          success: true,
+          previousCompleted: completedTicketNumber,
+          empty: true,
+          message: `${completedTicketNumber} yakunlandi. Navbatda boshqa mijoz yo‘q.`,
+        };
+      }
       return {
         success: false,
         empty: true,
-        message: 'Hozirda sizning vakolatingizdagi xizmatlar bo‘yicha kutayotgan navbat yo‘q.',
+        message: 'Hozirda kutayotgan navbatlar yo‘q.',
       };
     }
 
+    // Sort: VIP first, then FIFO by createdAt
     eligibleTickets.sort((a, b) => {
       if (a.priority === TICKET_PRIORITY.VIP && b.priority !== TICKET_PRIORITY.VIP) return -1;
       if (b.priority === TICKET_PRIORITY.VIP && a.priority !== TICKET_PRIORITY.VIP) return 1;
@@ -310,18 +378,20 @@ export function QueueProvider({ children }) {
           status: STAFF_STATUS.BUSY,
           currentTicketId: selectedTicket.id,
           pauseReason: null,
+          servedCountToday: activeTicket ? (s.servedCountToday || 0) + 1 : (s.servedCountToday || 0),
         };
       }
       return s;
     });
 
+    const serviceObj = (services || []).find((srv) => srv.id === selectedTicket.serviceId);
     const calledDetails = {
       ...selectedTicket,
       status: TICKET_STATUS.CALLED,
       calledAt: Date.now(),
       staffId: operator.id,
       windowNumber: operator.windowNumber,
-      serviceName: (services || []).find((srv) => srv.id === selectedTicket.serviceId)?.name || 'Xizmat',
+      serviceName: serviceObj?.name || 'Xizmat',
     };
 
     const updatedLogs = addAuditLog(
@@ -342,7 +412,12 @@ export function QueueProvider({ children }) {
       announceTicket(selectedTicket.ticketNumber, operator.windowNumber);
     }
 
-    return { success: true, ticket: calledDetails };
+    return {
+      success: true,
+      ticket: calledDetails,
+      previousCompleted: completedTicketNumber,
+      operator,
+    };
   };
 
   /**

@@ -98,21 +98,10 @@ export function StaffView() {
 
       const key = e.key;
 
-      // F2 / Space: Keyingi mijoz
-      if (key === 'F2' || (key === ' ' && !activeTicket && currentStaff.status === STAFF_STATUS.AVAILABLE)) {
+      // Space: Tezkor mijoz chaqirish (F2 butun ilova bo‘ylab global boshqariladi)
+      if (key === ' ' && !activeTicket && currentStaff.status === STAFF_STATUS.AVAILABLE) {
         e.preventDefault();
-        if (currentStaff.status === STAFF_STATUS.PAUSED) {
-          updateStaffStatus(currentStaff.id, STAFF_STATUS.AVAILABLE);
-          setTimeout(() => handleNextCustomer(), 100);
-        } else if (currentStaff.status === STAFF_STATUS.AVAILABLE) {
-          handleNextCustomer();
-        } else if (activeTicket) {
-          setNotification({
-            type: 'warning',
-            text: 'Avval joriy mijoz xizmatini yakunlang (F4)!',
-          });
-          setTimeout(() => setNotification(null), 3500);
-        }
+        handleNextCustomer(true);
       }
       // F3 / r / R: Qayta chaqirish
       else if (key === 'F3' || key === 'r' || key === 'R') {
@@ -197,9 +186,9 @@ export function StaffView() {
       (t.status === TICKET_STATUS.COMPLETED || t.status === TICKET_STATUS.NO_SHOW)
   );
 
-  const handleNextCustomer = () => {
+  const handleNextCustomer = (force = false) => {
     setNotification(null);
-    const result = callNextCustomer(currentStaff.id);
+    const result = callNextCustomer(currentStaff.id, force);
     if (!result.success) {
       setNotification({
         type: 'warning',
@@ -209,7 +198,9 @@ export function StaffView() {
     } else {
       setNotification({
         type: 'success',
-        text: `Mijoz ${result.ticket.ticketNumber} navbati qabul qilindi va ekranga chaqirildi!`,
+        text: result.ticket
+          ? `Mijoz ${result.ticket.ticketNumber} navbati qabul qilindi va ekranga chaqirildi!`
+          : result.message,
       });
       setTimeout(() => setNotification(null), 4000);
     }

@@ -131,7 +131,7 @@ export const INITIAL_SERVICES = [
   },
   {
     id: 'srv-all',
-    name: 'Barcha xizmatlar',
+    name: 'Boshqa xizmatlar',
     description: 'Bankning barcha operatsiyalari va umumiy xizmatlar',
     prefix: 'B',
     avgDurationMin: 10,
