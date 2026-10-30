@@ -14,8 +14,8 @@ import { playChime, playPrintSound, announceTicket } from '../utils/audio';
 
 const QueueContext = createContext(null);
 
-const STORAGE_KEY = 'qms_storage_v3';
-const CHANNEL_NAME = 'qms_broadcast_v3';
+const STORAGE_KEY = 'qms_storage_v5';
+const CHANNEL_NAME = 'qms_broadcast_v5';
 
 // Safe array helper
 function getSafeArray(key, fallback) {
