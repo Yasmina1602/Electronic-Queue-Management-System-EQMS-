@@ -72,6 +72,47 @@ export function KioskView() {
     minute: '2-digit',
   });
 
+  const generalServices = services.filter(
+    (s) => s.category !== 'accounting' && s.id !== 'srv-corp' && s.id !== 'srv-accounting'
+  );
+  const accountingServices = services.filter(
+    (s) => s.category === 'accounting' || s.id === 'srv-corp' || s.id === 'srv-accounting'
+  );
+
+  const renderServiceCard = (service) => {
+    const IconComponent = ICON_MAP[service.icon] || Info;
+
+    return (
+      <button
+        key={service.id}
+        onClick={() => handleSelectService(service.id)}
+        disabled={!service.active}
+        className={`group flex items-center gap-3.5 p-3 sm:p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer text-left shadow-xs hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] ${
+          service.bgClass || 'bg-slate-50 border-slate-100'
+        }`}
+      >
+        {/* Icon box */}
+        <div
+          className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center flex-shrink-0 shadow-xs transition-transform group-hover:scale-105 ${
+            service.iconBg || 'bg-blue-100 text-blue-600'
+          }`}
+        >
+          <IconComponent className="w-5 h-5" />
+        </div>
+
+        {/* Service Name */}
+        <div className="flex-1 min-w-0">
+          <div className="font-extrabold text-sm sm:text-base text-slate-900 leading-snug">
+            {service.name}
+          </div>
+          {service.id === 'srv-corp' && (
+            <div className="text-[11px] text-slate-500 font-normal">uchun</div>
+          )}
+        </div>
+      </button>
+    );
+  };
+
   return (
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-3 sm:p-6 bg-slate-950">
       
@@ -79,7 +120,7 @@ export function KioskView() {
       <div className="w-full max-w-2xl bg-white text-slate-900 rounded-[2.5rem] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6)] border-[10px] border-slate-850 p-6 sm:p-10 flex flex-col justify-between relative overflow-hidden min-h-[780px]">
         
         {/* Tablet Top Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
           {/* Company Logo */}
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center font-black">
@@ -107,7 +148,7 @@ export function KioskView() {
         </div>
 
         {/* Welcome Headline */}
-        <div className="mb-6">
+        <div className="mb-4">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight leading-tight">
             Tashrifingiz uchun rahmat!
           </h1>
@@ -116,41 +157,47 @@ export function KioskView() {
           </p>
         </div>
 
-        {/* 2-Column Grid of Pastel Service Cards (matching 1-rasm) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 my-3">
-          {services.map((service) => {
-            const IconComponent = ICON_MAP[service.icon] || Info;
+        {/* 2-Section Grouped Layout */}
+        <div className="my-auto space-y-4">
+          
+          {/* Section 1: Barcha xizmatlar (Jismoniy shaxslar) */}
+          <div>
+            <div className="flex items-center justify-between mb-2 px-1">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-500 ring-4 ring-blue-500/20"></span>
+                <h2 className="text-xs sm:text-sm font-extrabold uppercase tracking-wide text-slate-800">
+                  Barcha xizmatlar (Jismoniy shaxslar)
+                </h2>
+              </div>
+              <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                {generalServices.length} ta xizmat
+              </span>
+            </div>
 
-            return (
-              <button
-                key={service.id}
-                onClick={() => handleSelectService(service.id)}
-                disabled={!service.active}
-                className={`group flex items-center gap-3.5 p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 cursor-pointer text-left shadow-xs hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] ${
-                  service.bgClass || 'bg-slate-50 border-slate-100'
-                }`}
-              >
-                {/* Icon box */}
-                <div
-                  className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-xs transition-transform group-hover:scale-105 ${
-                    service.iconBg || 'bg-blue-100 text-blue-600'
-                  }`}
-                >
-                  <IconComponent className="w-5 h-5 sm:w-6 sm:h-6" />
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+              {generalServices.map(renderServiceCard)}
+            </div>
+          </div>
 
-                {/* Service Name */}
-                <div className="flex-1 min-w-0">
-                  <div className="font-extrabold text-sm sm:text-base text-slate-900 leading-snug">
-                    {service.name}
-                  </div>
-                  {service.id === 'srv-corp' && (
-                    <div className="text-[11px] text-slate-500 font-normal">uchun</div>
-                  )}
-                </div>
-              </button>
-            );
-          })}
+          {/* Section 2: Buxgalteriya va Yuridik shaxslar */}
+          <div className="pt-3 border-t border-slate-100">
+            <div className="flex items-center justify-between mb-2 px-1">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-4 ring-amber-500/20"></span>
+                <h2 className="text-xs sm:text-sm font-extrabold uppercase tracking-wide text-slate-800">
+                  Buxgalteriya va Yuridik shaxslar
+                </h2>
+              </div>
+              <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                {accountingServices.length} ta xizmat
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+              {accountingServices.map(renderServiceCard)}
+            </div>
+          </div>
+
         </div>
 
         {/* Bottom Banner: Loyallik va Bonuslar (matching 1-rasm) */}

@@ -62,6 +62,7 @@ export const INITIAL_SERVICES = [
     iconBg: 'bg-blue-100 text-blue-600',
     active: true,
     priorityWeight: 1,
+    category: 'general',
   },
   {
     id: 'srv-credit',
@@ -74,6 +75,7 @@ export const INITIAL_SERVICES = [
     iconBg: 'bg-cyan-100 text-cyan-600',
     active: true,
     priorityWeight: 2,
+    category: 'general',
   },
   {
     id: 'srv-deposit',
@@ -86,6 +88,7 @@ export const INITIAL_SERVICES = [
     iconBg: 'bg-teal-100 text-teal-600',
     active: true,
     priorityWeight: 2,
+    category: 'general',
   },
   {
     id: 'srv-card',
@@ -98,6 +101,7 @@ export const INITIAL_SERVICES = [
     iconBg: 'bg-emerald-100 text-emerald-600',
     active: true,
     priorityWeight: 1,
+    category: 'general',
   },
   {
     id: 'srv-corp',
@@ -110,6 +114,7 @@ export const INITIAL_SERVICES = [
     iconBg: 'bg-slate-200 text-slate-700',
     active: true,
     priorityWeight: 3,
+    category: 'accounting',
   },
   {
     id: 'srv-consult',
@@ -122,6 +127,7 @@ export const INITIAL_SERVICES = [
     iconBg: 'bg-green-100 text-green-600',
     active: true,
     priorityWeight: 1,
+    category: 'general',
   },
   {
     id: 'srv-all',
@@ -134,6 +140,7 @@ export const INITIAL_SERVICES = [
     iconBg: 'bg-indigo-100 text-indigo-600',
     active: true,
     priorityWeight: 2,
+    category: 'general',
   },
   {
     id: 'srv-accounting',
@@ -146,6 +153,7 @@ export const INITIAL_SERVICES = [
     iconBg: 'bg-amber-100 text-amber-600',
     active: true,
     priorityWeight: 2,
+    category: 'accounting',
   },
 ];
 
