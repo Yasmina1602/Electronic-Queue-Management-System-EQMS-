@@ -31,11 +31,10 @@ export function Navbar({ currentView, setCurrentView }) {
   ).length;
 
   const navItems = [
-    { id: 'kiosk', label: '1. Kiosk', icon: Smartphone, badge: null },
-    { id: 'staff', label: '2. Operator', icon: Briefcase, badge: waitingCount > 0 ? waitingCount : null },
-    { id: 'manager', label: '3. Menejer Tahlil', icon: TrendingUp, badge: null },
-    { id: 'admin', label: '4. Super Admin', icon: Shield, badge: null },
-    { id: 'display', label: '5. Katta Tablo (TV)', icon: Monitor, badge: null },
+    { id: 'staff', label: '1. Operator', icon: Briefcase, badge: waitingCount > 0 ? waitingCount : null },
+    { id: 'manager', label: '2. Menejer Tahlil', icon: TrendingUp, badge: null },
+    { id: 'admin', label: '3. Super Admin', icon: Shield, badge: null },
+    { id: 'display', label: '4. Katta Tablo (TV)', icon: Monitor, badge: null },
   ];
 
   const handleOpenNewWindow = () => {
@@ -90,6 +89,16 @@ export function Navbar({ currentView, setCurrentView }) {
               );
             })}
           </nav>
+
+          {/* Quick link back to Customer Kiosk Terminal */}
+          <button
+            onClick={() => setCurrentView('kiosk')}
+            title="Mijozlar terminaliga (Kiosk) o‘tish"
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
+          >
+            <Smartphone className="w-3.5 h-3.5" />
+            <span>Mijozlar Kioski (/)</span>
+          </button>
 
           {/* Right Tools: Branch Selector & Audio Toggle */}
           <div className="flex items-center gap-2">
