@@ -31,8 +31,26 @@ function getSafeArray(key, fallback) {
 
 export function QueueProvider({ children }) {
   const [branches, setBranches] = useState(() => getSafeArray(STORAGE_KEY + '_branches', INITIAL_BRANCHES));
-  const [services, setServices] = useState(() => getSafeArray(STORAGE_KEY + '_services', INITIAL_SERVICES));
-  const [staff, setStaff] = useState(() => getSafeArray(STORAGE_KEY + '_staff', INITIAL_STAFF));
+  const [services, setServices] = useState(() => {
+    const saved = getSafeArray(STORAGE_KEY + '_services', INITIAL_SERVICES);
+    const existingIds = new Set(saved.map((s) => s.id));
+    const missing = INITIAL_SERVICES.filter((s) => !existingIds.has(s.id));
+    if (missing.length > 0) {
+      return [...saved, ...missing];
+    }
+    return saved;
+  });
+  const [staff, setStaff] = useState(() => {
+    const saved = getSafeArray(STORAGE_KEY + '_staff', INITIAL_STAFF);
+    return saved.map((s) => {
+      const initialMatch = INITIAL_STAFF.find((is) => is.id === s.id);
+      if (initialMatch && initialMatch.authorizedServiceIds) {
+        const set = new Set([...(s.authorizedServiceIds || []), ...initialMatch.authorizedServiceIds]);
+        return { ...s, authorizedServiceIds: Array.from(set) };
+      }
+      return s;
+    });
+  });
   const [tickets, setTickets] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY + '_tickets');
@@ -179,7 +197,7 @@ export function QueueProvider({ children }) {
 
     const prefix = service.prefix || 'A';
     const existingWithPrefix = ticketList.filter(
-      (t) => t.branchId === activeBranchId && t.ticketNumber && t.ticketNumber.startsWith(prefix)
+      (t) => t.branchId === activeBranchId && t.ticketNumber && t.ticketNumber.startsWith(`${prefix}-`)
     );
     const nextSeqNum = 101 + existingWithPrefix.length;
     const ticketNumber = `${prefix}-${nextSeqNum}`;

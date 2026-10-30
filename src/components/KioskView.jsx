@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   X,
   Layers,
+  Calculator,
 } from 'lucide-react';
 
 const ICON_MAP = {
@@ -23,6 +24,8 @@ const ICON_MAP = {
   CreditCard,
   Briefcase,
   Info,
+  Layers,
+  Calculator,
 };
 
 export function KioskView() {
@@ -114,7 +117,7 @@ export function KioskView() {
         </div>
 
         {/* 2-Column Grid of Pastel Service Cards (matching 1-rasm) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 my-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 my-3">
           {services.map((service) => {
             const IconComponent = ICON_MAP[service.icon] || Info;
 
@@ -123,22 +126,22 @@ export function KioskView() {
                 key={service.id}
                 onClick={() => handleSelectService(service.id)}
                 disabled={!service.active}
-                className={`group flex items-center gap-4 p-4 sm:p-5 rounded-2xl border transition-all duration-200 cursor-pointer text-left shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] ${
+                className={`group flex items-center gap-3.5 p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 cursor-pointer text-left shadow-xs hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] ${
                   service.bgClass || 'bg-slate-50 border-slate-100'
                 }`}
               >
                 {/* Icon box */}
                 <div
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-xs transition-transform group-hover:scale-105 ${
+                  className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-xs transition-transform group-hover:scale-105 ${
                     service.iconBg || 'bg-blue-100 text-blue-600'
                   }`}
                 >
-                  <IconComponent className="w-6 h-6" />
+                  <IconComponent className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
 
                 {/* Service Name */}
                 <div className="flex-1 min-w-0">
-                  <div className="font-extrabold text-base sm:text-lg text-slate-900 leading-snug">
+                  <div className="font-extrabold text-sm sm:text-base text-slate-900 leading-snug">
                     {service.name}
                   </div>
                   {service.id === 'srv-corp' && (

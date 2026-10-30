@@ -88,32 +88,87 @@ export function StaffView() {
     return () => clearInterval(interval);
   }, [activeTicket]);
 
-  // Keyboard Shortcuts (F2 / Space: Keyingi mijoz, F3: Qayta chaqirish, F4: Yakunlash)
+  // Keyboard Shortcuts (F2: Keyingi mijoz, F3: Qayta chaqirish, F4: Xizmat, F7: Yo'naltirish, F8: Kelmadi, F9: Tanaffus)
   useEffect(() => {
     if (!enableHotkeys) return;
 
     const handleKeyDown = (e) => {
-      if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      // Don't trigger hotkeys if typing inside an input, textarea or select
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
 
-      if (e.key === 'F2') {
+      const key = e.key;
+
+      // F2 / Space: Keyingi mijoz
+      if (key === 'F2' || (key === ' ' && !activeTicket && currentStaff.status === STAFF_STATUS.AVAILABLE)) {
         e.preventDefault();
-        if (currentStaff.status === STAFF_STATUS.AVAILABLE) {
+        if (currentStaff.status === STAFF_STATUS.PAUSED) {
+          updateStaffStatus(currentStaff.id, STAFF_STATUS.AVAILABLE);
+          setTimeout(() => handleNextCustomer(), 100);
+        } else if (currentStaff.status === STAFF_STATUS.AVAILABLE) {
           handleNextCustomer();
+        } else if (activeTicket) {
+          setNotification({
+            type: 'warning',
+            text: 'Avval joriy mijoz xizmatini yakunlang (F4)!',
+          });
+          setTimeout(() => setNotification(null), 3500);
         }
-      } else if (e.key === 'F3') {
-        e.preventDefault();
+      }
+      // F3 / r / R: Qayta chaqirish
+      else if (key === 'F3' || key === 'r' || key === 'R') {
         if (activeTicket) {
+          e.preventDefault();
           recallCustomer(activeTicket.id);
+          setNotification({
+            type: 'info',
+            text: `[F3] ${activeTicket.ticketNumber} navbati qayta chaqirildi`,
+          });
+          setTimeout(() => setNotification(null), 3000);
         }
-      } else if (e.key === 'F4') {
-        e.preventDefault();
+      }
+      // F4 / Enter: Xizmatni boshlash yoki yakunlash
+      else if (key === 'F4' || key === 'Enter') {
         if (activeTicket) {
+          e.preventDefault();
           if (activeTicket.status === TICKET_STATUS.CALLED) {
             startService(activeTicket.id);
+            setNotification({
+              type: 'info',
+              text: `[F4] ${activeTicket.ticketNumber} bilan xizmat boshlandi`,
+            });
           } else {
             completeService(activeTicket.id);
+            setNotification({
+              type: 'success',
+              text: `[F4] ${activeTicket.ticketNumber} xizmati muvaffaqiyatli yakunlandi!`,
+            });
           }
+          setTimeout(() => setNotification(null), 3000);
         }
+      }
+      // F7 / t / T: Yuborish / Yo'naltirish
+      else if (key === 'F7' || key === 't' || key === 'T') {
+        if (activeTicket) {
+          e.preventDefault();
+          setShowTransferModal(true);
+        }
+      }
+      // F8: Kelmadi (No-Show)
+      else if (key === 'F8') {
+        if (activeTicket) {
+          e.preventDefault();
+          handleMarkNoShow();
+        }
+      }
+      // F9 / b / B: Tanaffus
+      else if (key === 'F9' || key === 'b' || key === 'B') {
+        e.preventDefault();
+        handleToggleBreak();
+      }
+      // Escape: Modallarni yopish
+      else if (key === 'Escape') {
+        setShowBreakModal(false);
+        setShowTransferModal(false);
       }
     };
 
@@ -383,11 +438,50 @@ export function StaffView() {
             <div className="lg:col-span-8 flex flex-col gap-4">
               
               <div className="bg-[#111a33] border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl relative overflow-hidden">
-                <div className="flex items-center justify-between text-xs text-slate-400 mb-4">
+                <div className="flex items-center justify-between text-xs text-slate-400 mb-3">
                   <span className="font-bold text-white uppercase tracking-wider text-sm">Navbat</span>
                   <div className="flex items-center gap-4">
                     <span className="text-slate-400">Kutayotganlar: <strong className="text-white">{staffWaitingQueue.length}</strong></span>
                     <span className="text-slate-400">Tanaffus: <strong className="text-white">{currentStaff.pauseReason || 'Yo‘q'}</strong></span>
+                  </div>
+                </div>
+
+                {/* Hotkeys Quick Helper Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 mb-4 rounded-xl bg-[#080d1a] border border-slate-800/80 text-[11px] text-slate-400">
+                  <div className="flex items-center gap-1.5 text-cyan-400 font-semibold">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Tezkor tugmalar (Hotkeys):</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-[10px]">
+                    <span className="inline-flex items-center gap-1">
+                      <kbd className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold border border-emerald-500/30">F2</kbd>
+                      <span>Keyingi</span>
+                    </span>
+                    <span className="text-slate-600">•</span>
+                    <span className="inline-flex items-center gap-1">
+                      <kbd className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono font-bold border border-amber-500/30">F3</kbd>
+                      <span>Qayta</span>
+                    </span>
+                    <span className="text-slate-600">•</span>
+                    <span className="inline-flex items-center gap-1">
+                      <kbd className="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono font-bold border border-rose-500/30">F4</kbd>
+                      <span>Yakunlash</span>
+                    </span>
+                    <span className="text-slate-600">•</span>
+                    <span className="inline-flex items-center gap-1">
+                      <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono font-bold border border-slate-700">F7</kbd>
+                      <span>Yo‘naltirish</span>
+                    </span>
+                    <span className="text-slate-600">•</span>
+                    <span className="inline-flex items-center gap-1">
+                      <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono font-bold border border-slate-700">F8</kbd>
+                      <span>Kelmadi</span>
+                    </span>
+                    <span className="text-slate-600">•</span>
+                    <span className="inline-flex items-center gap-1">
+                      <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono font-bold border border-slate-700">F9</kbd>
+                      <span>Tanaffus</span>
+                    </span>
                   </div>
                 </div>
 
@@ -470,7 +564,7 @@ export function StaffView() {
                       <Volume2 className="w-4 h-4" />
                     </button>
 
-                    {/* Xizmatni yakunlash */}
+                    {/* Xizmatni yakunlash / boshlash */}
                     <button
                       onClick={() => {
                         if (!activeTicket) return;
@@ -483,7 +577,7 @@ export function StaffView() {
                       disabled={!activeTicket}
                       className="w-full bg-[#e11d48] hover:bg-[#be123c] text-white font-bold text-xs sm:text-sm py-3 px-4 rounded-xl flex items-center justify-between shadow-md transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
                     >
-                      <span>{activeTicket?.status === TICKET_STATUS.CALLED ? 'Xizmatni boshlash' : 'Xizmatni yakunlash (F4)'}</span>
+                      <span>{activeTicket?.status === TICKET_STATUS.CALLED ? 'Xizmatni boshlash (F4)' : 'Xizmatni yakunlash (F4)'}</span>
                       <Check className="w-4 h-4 stroke-[3]" />
                     </button>
 
@@ -493,7 +587,7 @@ export function StaffView() {
                       disabled={!activeTicket}
                       className="w-full bg-[#1e293b] hover:bg-[#334155] border border-slate-700 text-slate-200 font-bold text-xs sm:text-sm py-2.5 px-4 rounded-xl flex items-center justify-between shadow-md transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
                     >
-                      <span>Yuborish/Yo‘naltirish</span>
+                      <span>Yuborish/Yo‘naltirish (F7)</span>
                       <Share2 className="w-4 h-4" />
                     </button>
 
@@ -502,15 +596,15 @@ export function StaffView() {
                       <button
                         onClick={handleMarkNoShow}
                         disabled={!activeTicket}
-                        className="py-2 rounded-xl bg-slate-900 hover:bg-red-500/20 text-slate-400 hover:text-red-300 text-xs font-semibold border border-slate-800 transition-colors cursor-pointer disabled:opacity-40"
+                        className="py-2 rounded-xl bg-slate-900 hover:bg-red-500/20 text-slate-300 hover:text-red-300 text-xs font-semibold border border-slate-800 transition-colors cursor-pointer disabled:opacity-40"
                       >
-                        Kelmadi
+                        Kelmadi (F8)
                       </button>
                       <button
                         onClick={handleToggleBreak}
-                        className="py-2 rounded-xl bg-slate-900 hover:bg-amber-500/20 text-slate-400 hover:text-amber-300 text-xs font-semibold border border-slate-800 transition-colors cursor-pointer"
+                        className="py-2 rounded-xl bg-slate-900 hover:bg-amber-500/20 text-slate-300 hover:text-amber-300 text-xs font-semibold border border-slate-800 transition-colors cursor-pointer"
                       >
-                        Tanaffus
+                        Tanaffus (F9)
                       </button>
                     </div>
 
@@ -773,8 +867,8 @@ export function StaffView() {
               <div className="p-4 rounded-2xl bg-[#0b1224] border border-slate-800 flex items-center justify-between">
                 <div>
                   <div className="font-bold text-white text-sm">Tezkor Klaviatura Tugmalari (Hotkeys)</div>
-                  <div className="text-slate-400 text-[11px] mt-0.5">
-                    <strong>F2:</strong> Keyingi mijoz | <strong>F3:</strong> Qayta chaqirish | <strong>F4:</strong> Xizmatni boshlash / Yakunlash
+                  <div className="text-slate-400 text-[11px] mt-0.5 leading-relaxed">
+                    <strong>F2:</strong> Keyingi | <strong>F3:</strong> Qayta | <strong>F4:</strong> Boshlash/Yakunlash | <strong>F7:</strong> Yo‘naltirish | <strong>F8:</strong> Kelmadi | <strong>F9:</strong> Tanaffus | <strong>Esc:</strong> Bekor qilish
                   </div>
                 </div>
                 <button
