@@ -28,7 +28,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 
-export function StaffView() {
+export function StaffView({ onNavigateHome }) {
   const {
     staff,
     activeStaffId,
@@ -45,7 +45,31 @@ export function StaffView() {
     updateStaffStatus,
     operatorAlerts,
     sendOperatorAlert,
+    submitStaffRequest,
   } = useQueue();
+
+  // Talab 7: Xodim avtorizatsiyasi (Kirish va Ro'yxatdan o'tish arizasi)
+  const [loggedInStaffId, setLoggedInStaffId] = useState(() => {
+    try {
+      const saved = localStorage.getItem('qms_staff_auth_id');
+      if (saved && staff.some((s) => s.id === saved)) return saved;
+      return null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [authMode, setAuthMode] = useState('login'); // 'login' | 'register'
+  const [loginIdentifier, setLoginIdentifier] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [authSuccess, setAuthSuccess] = useState('');
+
+  // Register fields
+  const [regName, setRegName] = useState('');
+  const [regWindow, setRegWindow] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [regPassword, setRegPassword] = useState('');
 
   const [activeTab, setActiveTab] = useState('workspace'); // 'workspace' | 'history' | 'settings' | 'analytics'
   const [notification, setNotification] = useState(null);
@@ -62,8 +86,85 @@ export function StaffView() {
   const [soundVolume, setSoundVolume] = useState(80);
   const [enableHotkeys, setEnableHotkeys] = useState(true);
 
-  const currentStaff = staff.find((s) => s.id === activeStaffId) || staff[0];
+  // Sync activeStaffId with logged in staff
+  useEffect(() => {
+    if (loggedInStaffId && staff.some((s) => s.id === loggedInStaffId)) {
+      setActiveStaffId(loggedInStaffId);
+    }
+  }, [loggedInStaffId, staff, setActiveStaffId]);
+
+  const currentStaff = staff.find((s) => s.id === (loggedInStaffId || activeStaffId)) || staff[0];
   const currentBranch = branches.find((b) => b.id === currentStaff?.branchId) || branches[0];
+
+  // Login handler
+  const handleStaffLogin = (e) => {
+    e.preventDefault();
+    setAuthError('');
+    setAuthSuccess('');
+
+    const matched = staff.find(
+      (s) =>
+        (s.name.toLowerCase() === loginIdentifier.trim().toLowerCase() ||
+          s.login.toLowerCase() === loginIdentifier.trim().toLowerCase()) &&
+        (s.password === loginPassword.trim() || loginPassword.trim() === '123')
+    );
+
+    if (matched) {
+      setLoggedInStaffId(matched.id);
+      setActiveStaffId(matched.id);
+      try {
+        localStorage.setItem('qms_staff_auth_id', matched.id);
+      } catch {}
+      setAuthSuccess(`Xush kelibsiz, ${matched.name}!`);
+    } else {
+      setAuthError('F.I.Sh/Login yoki parol noto‘g‘ri! (Standart parol: 123)');
+    }
+  };
+
+  // Register request submit handler (Talab 7: Adminga so'rov boradi)
+  const handleRegisterRequest = (e) => {
+    e.preventDefault();
+    setAuthError('');
+    setAuthSuccess('');
+
+    if (!regName.trim()) {
+      setAuthError('Iltimos, ism va familiyangizni kiriting!');
+      return;
+    }
+    if (!regPassword.trim()) {
+      setAuthError('Iltimos, parol o‘ylab toping!');
+      return;
+    }
+
+    const res = submitStaffRequest({
+      name: regName.trim(),
+      windowNumber: regWindow.trim() || `${staff.length + 1}`,
+      phone: regPhone.trim(),
+      password: regPassword.trim(),
+    });
+
+    if (res.success) {
+      setAuthSuccess(
+        'Arizangiz Adminga muvaffaqiyatli yuborildi! Admin arizani tasdiqlagach, parolingiz orqali tizimga kira olasiz.'
+      );
+      setRegName('');
+      setRegWindow('');
+      setRegPhone('');
+      setRegPassword('');
+      setTimeout(() => setAuthMode('login'), 3500);
+    } else {
+      setAuthError(res.error || 'Xatolik yuz berdi');
+    }
+  };
+
+  // Staff logout
+  const handleStaffLogout = () => {
+    setLoggedInStaffId(null);
+    try {
+      localStorage.removeItem('qms_staff_auth_id');
+    } catch {}
+    setAuthSuccess('Tizimdan chiqildi.');
+  };
 
   // Active ticket assigned to this staff
   const activeTicket = tickets.find(
@@ -243,6 +344,209 @@ export function StaffView() {
     setChatInput('');
   };
 
+  // Agar xodim tizimga kirmagan bo'lsa, Kirish va Ro'yxatdan o'tish arizasi oynasini ko'rsatish (Talab 7)
+  if (!loggedInStaffId) {
+    return (
+      <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col items-center justify-center p-4 font-sans">
+        <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border-4 border-emerald-800 p-6 sm:p-8 relative">
+          
+          {/* Logo Header */}
+          <div className="text-center mb-6">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-900 to-emerald-700 text-white flex items-center justify-center mx-auto mb-3 shadow-lg shadow-emerald-900/30">
+              <Layers className="w-8 h-8 text-white" />
+            </div>
+            <h2 className="text-2xl font-black text-emerald-950 tracking-tight">
+              Xodimlar (Operator) Portali
+            </h2>
+            <p className="text-xs text-slate-600 mt-1 font-medium">
+              Faqat bank xodimlari va operatorlar uchun yopiq tizim
+            </p>
+          </div>
+
+          {/* Toggle Login / Register */}
+          <div className="flex bg-emerald-50 p-1 rounded-2xl border border-emerald-200 mb-5">
+            <button
+              onClick={() => {
+                setAuthMode('login');
+                setAuthError('');
+                setAuthSuccess('');
+              }}
+              className={`flex-1 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                authMode === 'login'
+                  ? 'bg-emerald-800 text-white shadow-md'
+                  : 'text-emerald-900 hover:text-emerald-950'
+              }`}
+            >
+              1. Tizimga Kirish
+            </button>
+            <button
+              onClick={() => {
+                setAuthMode('register');
+                setAuthError('');
+                setAuthSuccess('');
+              }}
+              className={`flex-1 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                authMode === 'register'
+                  ? 'bg-emerald-800 text-white shadow-md'
+                  : 'text-emerald-900 hover:text-emerald-950'
+              }`}
+            >
+              2. Yangi Ro‘yxatdan O‘tish
+            </button>
+          </div>
+
+          {/* Alerts */}
+          {authError && (
+            <div className="p-3 mb-4 rounded-xl bg-red-100 border border-red-300 text-red-800 text-xs font-bold">
+              {authError}
+            </div>
+          )}
+          {authSuccess && (
+            <div className="p-3 mb-4 rounded-xl bg-emerald-100 border border-emerald-400 text-emerald-900 text-xs font-bold flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+              <span>{authSuccess}</span>
+            </div>
+          )}
+
+          {/* LOGIN FORM */}
+          {authMode === 'login' ? (
+            <form onSubmit={handleStaffLogin} className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-black uppercase text-slate-700 mb-1">
+                  Xodim Ismi yoki Logini:
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={loginIdentifier}
+                  onChange={(e) => setLoginIdentifier(e.target.value)}
+                  placeholder="Masalan: Sanjarbek Aliyev yoki OP-101"
+                  className="w-full px-4 py-2.5 rounded-xl border border-emerald-300 focus:outline-hidden focus:border-emerald-700 text-xs font-semibold bg-emerald-50/40"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-black uppercase text-slate-700 mb-1">
+                  Parol:
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="Standart parol: 123"
+                  className="w-full px-4 py-2.5 rounded-xl border border-emerald-300 focus:outline-hidden focus:border-emerald-700 text-xs font-semibold bg-emerald-50/40"
+                />
+                <span className="text-[10px] text-slate-500 mt-0.5 block">
+                  Sinov uchun standart parol: <strong>123</strong>
+                </span>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-black text-xs shadow-md transition-all cursor-pointer"
+              >
+                Hisobga Kirish
+              </button>
+            </form>
+          ) : (
+            /* REGISTER REQUEST FORM (Talab 7: Adminga yuboriladi) */
+            <form onSubmit={handleRegisterRequest} className="space-y-3.5">
+              <p className="text-[11px] text-slate-600 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+                ⚠️ Yangi xodim bo‘lib ro‘yxatdan o‘tsangiz, so‘rovingiz Adminga yuboriladi. Admin qabul qilgach, tizimga kira olasiz.
+              </p>
+
+              <div>
+                <label className="block text-[11px] font-black uppercase text-slate-700 mb-1">
+                  F.I.Sh (To‘liq ismingiz):
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={regName}
+                  onChange={(e) => setRegName(e.target.value)}
+                  placeholder="Masalan: Dilshod Rahimov"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-300 text-xs font-semibold bg-emerald-50/40"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-black uppercase text-slate-700 mb-1">
+                    Oyna Raqami:
+                  </label>
+                  <input
+                    type="text"
+                    value={regWindow}
+                    onChange={(e) => setRegWindow(e.target.value)}
+                    placeholder="Masalan: 6"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-300 text-xs font-semibold bg-emerald-50/40"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-black uppercase text-slate-700 mb-1">
+                    Telefon:
+                  </label>
+                  <input
+                    type="tel"
+                    value={regPhone}
+                    onChange={(e) => setRegPhone(e.target.value)}
+                    placeholder="+998 90..."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-300 text-xs font-semibold bg-emerald-50/40"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-black uppercase text-slate-700 mb-1">
+                  Parol O‘ylab Toping:
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={regPassword}
+                  onChange={(e) => setRegPassword(e.target.value)}
+                  placeholder="Kelgusida kirish uchun parol"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-300 text-xs font-semibold bg-emerald-50/40"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-black text-xs shadow-md transition-all cursor-pointer"
+              >
+                Adminga Ariza Yuborish
+              </button>
+            </form>
+          )}
+
+          {/* Quick Staff Demo Pick */}
+          <div className="mt-5 pt-3 border-t border-slate-200 text-center">
+            <span className="text-[10px] text-slate-500 font-semibold">
+              Tezkor mavjud xodimlar:
+            </span>
+            <div className="flex flex-wrap justify-center gap-1.5 mt-2">
+              {staff.slice(0, 3).map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => {
+                    setLoginIdentifier(s.name);
+                    setLoginPassword(s.password || '123');
+                  }}
+                  className="text-[10px] px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold border border-emerald-200 cursor-pointer"
+                >
+                  {s.name} ({s.windowNumber}-oyna)
+                </button>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-slate-100 text-slate-900 flex font-sans">
       
@@ -358,20 +662,20 @@ export function StaffView() {
           </div>
 
           <div className="flex flex-wrap items-center gap-4 text-xs">
-            {/* Operator Switcher dropdown */}
-            <div className="flex items-center gap-2 text-slate-600">
-              <span className="font-bold">Operator:</span>
-              <select
-                value={activeStaffId}
-                onChange={(e) => setActiveStaffId(e.target.value)}
-                className="bg-emerald-50 border border-emerald-300 text-emerald-950 rounded-lg px-2.5 py-1 text-xs font-bold focus:outline-hidden cursor-pointer"
+            {/* Operator Info & Logout (Talab 7) */}
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-slate-600">Operator:</span>
+              <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-950 font-black border border-emerald-300">
+                {currentStaff.name} ({currentStaff.windowNumber}-Oyna)
+              </span>
+              <button
+                onClick={handleStaffLogout}
+                title="Hisobdan chiqish"
+                className="px-2.5 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 font-bold border border-red-200 transition-colors cursor-pointer flex items-center gap-1"
               >
-                {staff.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} / {s.login || 'OP-' + s.windowNumber} ({s.windowNumber}-Oyna)
-                  </option>
-                ))}
-              </select>
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Chiqish</span>
+              </button>
             </div>
 
             {/* Active / Break Toggle Button */}
@@ -607,34 +911,30 @@ export function StaffView() {
               {/* Bottom Row of Left: Secondary Navbat Card + Quick Chat + Statistika */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                 
-                {/* Secondary Navbat Card (4 cols) */}
+                {/* Secondary Navbat Card (4 cols) (Talab 2: Tugmalar olib tashlandi, Talab 6: Mijoz ismi/tel) */}
                 <div className="md:col-span-4 bg-white border-2 border-emerald-200 rounded-2xl p-4 flex flex-col justify-between shadow-md">
                   <div className="text-xs font-bold text-slate-500 mb-2">Navbatdagi Mijoz</div>
-                  <div className="bg-emerald-50/70 p-3 rounded-xl border border-emerald-200 my-auto">
-                    <div className="flex justify-between items-center text-[11px] text-slate-500 mb-1">
-                      <span>Mijoz</span>
-                      <span className="px-1.5 py-0.5 rounded bg-emerald-200 text-emerald-900 text-[10px] font-bold">Kutmoqda</span>
+                  <div className="bg-emerald-50/70 p-3.5 rounded-xl border border-emerald-200 my-auto space-y-1.5">
+                    <div className="flex justify-between items-center text-[11px] text-slate-500">
+                      <span>Chipta:</span>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 text-[10px] font-black">
+                        Kutmoqda
+                      </span>
                     </div>
-                    <div className="text-2xl font-black text-emerald-950 font-sans">
+                    <div className="text-3xl font-black text-emerald-950 font-sans tracking-tight">
                       {staffWaitingQueue[0]?.ticketNumber || 'X-103'}
                     </div>
-                    <div className="text-[11px] text-slate-500 truncate mt-1">
+                    <div className="text-xs font-bold text-emerald-900 truncate">
+                      Mijoz: {staffWaitingQueue[0]?.clientIdentifier || 'Keyingi mijoz'}
+                    </div>
+                    {staffWaitingQueue[0]?.clientPhone && (
+                      <div className="text-[11px] font-mono text-slate-500">
+                        Tel: {staffWaitingQueue[0].clientPhone}
+                      </div>
+                    )}
+                    <div className="text-[11px] text-slate-500 truncate pt-1 border-t border-emerald-200/60">
                       Kutish: {staffWaitingQueue[0] ? `${Math.max(1, Math.round((Date.now() - staffWaitingQueue[0].createdAt) / 60000))} daqiqa` : '5 daqiqa'}
                     </div>
-                  </div>
-                  <div className="flex gap-1.5 mt-2">
-                    <button
-                      onClick={() => activeTicket && recallCustomer(activeTicket.id)}
-                      className="flex-1 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[10px] font-bold cursor-pointer"
-                    >
-                      Qayta chaqirish 🔊
-                    </button>
-                    <button
-                      onClick={() => activeTicket && completeService(activeTicket.id)}
-                      className="flex-1 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-[10px] font-bold cursor-pointer"
-                    >
-                      Yakunlash ✔
-                    </button>
                   </div>
                 </div>
 
@@ -731,20 +1031,27 @@ export function StaffView() {
                         const waitMinutes = Math.max(1, Math.round((Date.now() - t.createdAt) / 60000));
 
                         return (
-                          <tr key={t.id} className="hover:bg-slate-800/30">
-                            <td className="py-2.5 font-bold text-cyan-400">
-                              {t.ticketNumber}
-                              {t.priority === TICKET_PRIORITY.VIP && (
-                                <span className="ml-1 text-[9px] bg-amber-500/20 text-amber-300 px-1 py-0.2 rounded font-bold">
-                                  VIP
+                          <tr key={t.id} className="hover:bg-emerald-50/90 transition-colors border-b border-emerald-100/70">
+                            <td className="py-3">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-black text-emerald-950 text-sm font-sans tracking-tight">
+                                  {t.ticketNumber}
                                 </span>
-                              )}
+                                {t.priority === TICKET_PRIORITY.VIP && (
+                                  <span className="text-[9px] bg-amber-500 text-white px-1.5 py-0.2 rounded font-black">
+                                    VIP
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-slate-600 font-medium truncate max-w-[130px]">
+                                {t.clientIdentifier || 'Mijoz'}
+                              </div>
                             </td>
-                            <td className="py-2.5 text-slate-400 font-mono">
+                            <td className="py-3 text-emerald-800 font-mono font-bold text-xs">
                               {waitMinutes}:45
                             </td>
-                            <td className="py-2.5 text-right text-slate-300 truncate max-w-[110px]">
-                              {srv?.name || 'Kredit rasmiylashtirish'}
+                            <td className="py-3 text-right font-semibold text-slate-800 text-xs truncate max-w-[120px]">
+                              {srv?.name || 'Xizmat'}
                             </td>
                           </tr>
                         );

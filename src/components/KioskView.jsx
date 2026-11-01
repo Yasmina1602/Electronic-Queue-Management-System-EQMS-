@@ -9,17 +9,46 @@ import {
   ChevronRight,
   ShieldCheck,
   Printer,
-  KeyRound,
+  User,
+  Phone,
+  UserCheck,
+  RefreshCw,
+  Clock,
   ArrowRight,
   CheckCircle2,
 } from 'lucide-react';
 
-export function KioskView({ onNavigateStaff }) {
-  const { services, branches, activeBranchId, createTicket } = useQueue();
+export function KioskView() {
+  const { services, branches, activeBranchId, createTicket, registerClient, registeredClients } = useQueue();
   const [ticketData, setTicketData] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Talab 6: Mijoz akkaunti ma'lumotlari
+  const [clientName, setClientName] = useState(() => {
+    try {
+      return localStorage.getItem('qms_kiosk_client_name') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [clientPhone, setClientPhone] = useState(() => {
+    try {
+      return localStorage.getItem('qms_kiosk_client_phone') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [isClientRegistered, setIsClientRegistered] = useState(() => {
+    try {
+      return !!localStorage.getItem('qms_kiosk_client_name');
+    } catch {
+      return false;
+    }
+  });
+
+  const [formError, setFormError] = useState('');
   const [showVipModal, setShowVipModal] = useState(false);
   const [vipCardInput, setVipCardInput] = useState('');
 
@@ -50,20 +79,59 @@ export function KioskView({ onNavigateStaff }) {
       description: 'Hisob-kitoblar, Soliq, To‘lov topshiriqlari va yuridik shaxslar',
     };
 
-  // Kartani bosganda DARHOL chek chiqarish
-  const handleServiceClick = (service, isVip = false, clientName = null) => {
+  // Mijoz ro'yxatdan o'tishi / Akkaunt ochishi (Talab 6)
+  const handleClientRegister = (e) => {
+    if (e) e.preventDefault();
+    if (!clientName.trim()) {
+      setFormError('Iltimos, ism va familiyangizni kiriting!');
+      return;
+    }
+    if (!clientPhone.trim() || clientPhone.trim().length < 7) {
+      setFormError('Iltimos, to‘g‘ri telefon raqamingizni kiriting!');
+      return;
+    }
+
+    setFormError('');
+    registerClient(clientName.trim(), clientPhone.trim());
+    try {
+      localStorage.setItem('qms_kiosk_client_name', clientName.trim());
+      localStorage.setItem('qms_kiosk_client_phone', clientPhone.trim());
+    } catch {}
+    setIsClientRegistered(true);
+  };
+
+  // Yangi mijoz kelsa tozalash
+  const handleResetClient = () => {
+    setClientName('');
+    setClientPhone('');
+    setIsClientRegistered(false);
+    try {
+      localStorage.removeItem('qms_kiosk_client_name');
+      localStorage.removeItem('qms_kiosk_client_phone');
+    } catch {}
+  };
+
+  // Kartani bosganda chipta olish (Mijoz nomidan boradi - Talab 6)
+  const handleServiceClick = (service, isVip = false) => {
     if (isProcessing) return;
+
+    // Agar mijoz hali o'z ma'lumotlarini kiritmagan bo'lsa, avval ro'yxatdan o'tishni talab qiladi
+    if (!isClientRegistered || !clientName.trim()) {
+      setFormError('Iltimos, avval ismingiz va telefoningizni kiritib tasdiqlang!');
+      return;
+    }
+
     setIsProcessing(true);
     setSelectedServiceId(service.id);
 
     setTimeout(() => {
-      const res = createTicket(service.id, isVip, clientName);
+      const res = createTicket(service.id, isVip, clientName.trim(), clientPhone.trim());
       if (res.success) {
         setTicketData(res);
       }
       setIsProcessing(false);
       setSelectedServiceId(null);
-    }, 400);
+    }, 350);
   };
 
   const formattedTime = currentTime.toLocaleTimeString('uz-UZ', {
@@ -77,9 +145,8 @@ export function KioskView({ onNavigateStaff }) {
       {/* Tablet Device Frame - Oq va To'q Yashil */}
       <div className="w-full max-w-2xl bg-white text-slate-900 rounded-[2.5rem] shadow-[0_25px_60px_-15px_rgba(6,78,59,0.22)] border-[8px] border-emerald-950/10 p-6 sm:p-10 flex flex-col justify-between relative overflow-hidden min-h-[760px] my-auto">
         
-        {/* Tablet Top Header */}
+        {/* Tablet Top Header (Faqat brend va soat, xavfsiz va toza) */}
         <div className="flex items-center justify-between border-b border-emerald-100 pb-4 mb-4">
-          {/* Bank / Company Logo */}
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-900 to-emerald-700 text-white flex items-center justify-center font-black shadow-md shadow-emerald-900/20">
               <Layers className="w-5 h-5 text-emerald-200" />
@@ -89,12 +156,11 @@ export function KioskView({ onNavigateStaff }) {
                 ELEKTRON NAVBAT
               </div>
               <div className="text-[10px] font-bold text-emerald-700 tracking-wider">
-                BOSHQARUV TIZIMI
+                MIJOZ RO‘YXATGA YOZILISH TERMINALI
               </div>
             </div>
           </div>
 
-          {/* Time & Branch */}
           <div className="text-right">
             <div className="text-2xl font-black text-emerald-950 font-sans tracking-tight">
               {formattedTime}
@@ -105,18 +171,111 @@ export function KioskView({ onNavigateStaff }) {
           </div>
         </div>
 
-        {/* Hero Title Area */}
-        <div className="my-auto flex flex-col justify-center space-y-6">
+        {/* Hero Title & Client Account Area (Talab 6) */}
+        <div className="my-auto flex flex-col justify-center space-y-5">
+          
+          {/* Akkaunt holati yoki Ro'yxatdan o'tish formasi */}
+          {!isClientRegistered ? (
+            <div className="bg-emerald-50/70 border-2 border-emerald-300 rounded-3xl p-5 sm:p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse"></span>
+                <h2 className="text-base sm:text-lg font-black text-emerald-950">
+                  Mijoz sifatida ro‘yxatdan o‘tish (Akkaunt ochish)
+                </h2>
+              </div>
+              <p className="text-xs text-slate-600 mb-4 font-medium">
+                Iltimos, navbat olish uchun kerakli ma‘lumotlaringizni kiriting. Navbatingiz o‘z nomingizdan qayd etiladi va xodimlar buni ko‘ra oladi.
+              </p>
+
+              <form onSubmit={handleClientRegister} className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-emerald-950 mb-1">
+                      F.I.Sh (Ismingiz va Familiyangiz):
+                    </label>
+                    <div className="relative">
+                      <User className="w-4 h-4 text-emerald-700 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        required
+                        value={clientName}
+                        onChange={(e) => setClientName(e.target.value)}
+                        placeholder="Masalan: Sardor Usmonov"
+                        className="w-full pl-9 pr-3 py-2.5 bg-white rounded-xl border border-emerald-300 focus:outline-hidden focus:border-emerald-700 text-xs font-semibold text-slate-900 shadow-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-emerald-950 mb-1">
+                      Telefon Raqamingiz:
+                    </label>
+                    <div className="relative">
+                      <Phone className="w-4 h-4 text-emerald-700 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="tel"
+                        required
+                        value={clientPhone}
+                        onChange={(e) => setClientPhone(e.target.value)}
+                        placeholder="+998 90 123 45 67"
+                        className="w-full pl-9 pr-3 py-2.5 bg-white rounded-xl border border-emerald-300 focus:outline-hidden focus:border-emerald-700 text-xs font-semibold text-slate-900 shadow-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {formError && (
+                  <p className="text-xs font-bold text-red-600 animate-shake">
+                    {formError}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-black shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <UserCheck className="w-4 h-4" />
+                  <span>Ma‘lumotlarni tasdiqlash va Xizmat tanlash</span>
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div className="bg-emerald-50/80 border-2 border-emerald-400 rounded-2xl p-4 flex items-center justify-between shadow-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-800 text-white flex items-center justify-center font-black shadow-xs">
+                  <UserCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-xs text-slate-500 font-semibold">Mijoz akkaunti:</div>
+                  <div className="text-sm font-black text-emerald-950 flex items-center gap-2">
+                    <span>{clientName}</span>
+                    <span className="text-xs text-emerald-700 font-bold font-mono">({clientPhone})</span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={handleResetClient}
+                title="Boshqa mijoz kiritish"
+                className="px-3 py-1.5 rounded-xl border border-emerald-300 bg-white hover:bg-emerald-100 text-[11px] font-bold text-emerald-900 flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-emerald-700" />
+                <span>O‘zgartirish</span>
+              </button>
+            </div>
+          )}
+
+          {/* Sarlavha */}
           <div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200 mb-2.5">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200 mb-2">
               <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
-              Elektron Navbat Kioski
+              Kerakli Xizmatni Tanlang
             </span>
-            <h1 className="text-3xl sm:text-4xl font-black text-emerald-950 tracking-tight leading-tight">
-              Tashrifingiz uchun rahmat!
+            <h1 className="text-2xl sm:text-3xl font-black text-emerald-950 tracking-tight leading-tight">
+              Qaysi xizmat turidan foydalanasiz?
             </h1>
-            <p className="text-sm sm:text-base text-slate-600 mt-1.5 font-medium">
-              Iltimos, kerakli xizmat bo‘limini tanlang
+            <p className="text-xs sm:text-sm text-slate-600 mt-1 font-medium">
+              Tugmani bosing — chiptangiz o‘z nomingizdan chop etiladi
             </p>
           </div>
 
@@ -142,7 +301,7 @@ export function KioskView({ onNavigateStaff }) {
                 </span>
               </div>
 
-              <div className="mt-8">
+              <div className="mt-6">
                 <h3 className="text-2xl font-black text-emerald-950 group-hover:text-emerald-800 transition-colors">
                   Xizmatlar
                 </h3>
@@ -154,7 +313,7 @@ export function KioskView({ onNavigateStaff }) {
               <div className="mt-5 pt-3.5 border-t border-emerald-200/70 flex items-center justify-between text-xs font-bold text-emerald-800 group-hover:text-emerald-900">
                 <span className="flex items-center gap-1.5">
                   <Printer className="w-4 h-4 text-emerald-700" />
-                  Chek olish
+                  Chipta olish
                 </span>
                 <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
               </div>
@@ -179,7 +338,7 @@ export function KioskView({ onNavigateStaff }) {
                 </span>
               </div>
 
-              <div className="mt-8">
+              <div className="mt-6">
                 <h3 className="text-2xl font-black text-emerald-950 group-hover:text-emerald-800 transition-colors">
                   Buxgalteriya
                 </h3>
@@ -191,7 +350,7 @@ export function KioskView({ onNavigateStaff }) {
               <div className="mt-5 pt-3.5 border-t border-emerald-200/70 flex items-center justify-between text-xs font-bold text-emerald-800 group-hover:text-emerald-900">
                 <span className="flex items-center gap-1.5">
                   <Printer className="w-4 h-4 text-emerald-700" />
-                  Chek olish
+                  Chipta olish
                 </span>
                 <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
               </div>
@@ -199,45 +358,35 @@ export function KioskView({ onNavigateStaff }) {
 
           </div>
 
-          {/* Bottom Banner: Loyallik va Bonuslar (To'q yashil) */}
+          {/* Bottom Banner: Loyallik va VIP Navbat */}
           <div
             onClick={() => setShowVipModal(true)}
-            className="w-full bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-800 text-white p-4 sm:p-5 rounded-2xl flex items-center justify-between shadow-lg cursor-pointer hover:shadow-xl hover:scale-[1.01] transition-all"
+            className="w-full bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-800 text-white p-3.5 sm:p-4 rounded-2xl flex items-center justify-between shadow-md cursor-pointer hover:shadow-lg transition-all"
           >
-            <div className="flex items-center gap-3.5">
-              <div className="w-11 h-11 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center shrink-0 border border-white/20">
-                <QrCode className="w-6 h-6 text-white" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center shrink-0 border border-white/20">
+                <QrCode className="w-5 h-5 text-white" />
               </div>
               <div className="text-left">
-                <div className="text-sm font-black flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-emerald-300" />
-                  Loyallik va Bonuslar
+                <div className="text-xs sm:text-sm font-black flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
+                  Loyallik va VIP Imtiyozli Navbat
                 </div>
-                <div className="text-xs text-emerald-100 font-medium mt-0.5">
-                  Loyallik QR-kodini skanerlash • Imtiyozli navbat va bonuslar
+                <div className="text-[11px] text-emerald-100 font-medium">
+                  VIP kartangiz yoki QR-kod orqali imtiyozli navbatga yozilish
                 </div>
               </div>
             </div>
-            <ArrowRight className="w-5 h-5 text-emerald-200" />
+            <ArrowRight className="w-4 h-4 text-emerald-200" />
           </div>
         </div>
 
-        {/* Footer info & Staff navigation */}
-        <div className="pt-4 border-t border-emerald-100 flex items-center justify-between text-xs text-slate-500">
-          <div className="flex items-center gap-1.5 text-emerald-900 font-bold">
+        {/* Footer: Faqat xavfsizlik kafolati (Talab 5: Xodimlar kirishi butunlay olib tashlandi!) */}
+        <div className="pt-4 border-t border-emerald-100 flex items-center justify-center text-xs text-slate-500">
+          <div className="flex items-center gap-2 text-emerald-900 font-bold">
             <ShieldCheck className="w-4 h-4 text-emerald-700" />
-            <span>Xavfsiz va markazlashgan navbat tizimi</span>
+            <span>Xavfsiz va markazlashgan mijozlar navbat tizimi</span>
           </div>
-
-          {onNavigateStaff && (
-            <button
-              onClick={onNavigateStaff}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-emerald-800 hover:text-emerald-950 hover:bg-emerald-50 text-[11px] font-bold transition-all cursor-pointer"
-            >
-              <KeyRound className="w-3.5 h-3.5" />
-              <span>Xodimlar kirishi</span>
-            </button>
-          )}
         </div>
 
       </div>
@@ -247,10 +396,10 @@ export function KioskView({ onNavigateStaff }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-emerald-950/60 backdrop-blur-sm">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border-2 border-emerald-700">
             <h3 className="text-xl font-black text-emerald-950 mb-2">
-              Loyallik Kartasi / VIP Navbat
+              VIP / Imtiyozli Navbat
             </h3>
             <p className="text-xs text-slate-600 mb-4">
-              Karta raqamingiz yoki QR kodingizni kiriting. Tizim sizni imtiyozli (VIP) navbatga kiritadi.
+              VIP karta raqamingizni kiriting. Navbatingiz birinchi o‘rinda chaqiriladi.
             </p>
             <input
               type="text"
@@ -269,7 +418,8 @@ export function KioskView({ onNavigateStaff }) {
               <button
                 onClick={() => {
                   setShowVipModal(false);
-                  handleServiceClick(xizmatlarService, true, vipCardInput || 'VIP Mijoz');
+                  const vName = vipCardInput || clientName || 'VIP Mijoz';
+                  handleServiceClick(xizmatlarService, true);
                   setVipCardInput('');
                 }}
                 className="flex-1 py-2.5 rounded-xl bg-emerald-800 text-white font-bold hover:bg-emerald-900 text-xs shadow-md cursor-pointer"
@@ -281,7 +431,7 @@ export function KioskView({ onNavigateStaff }) {
         </div>
       )}
 
-      {/* Modal: Thermal Ticket Modal */}
+      {/* Modal: Thermal Ticket Modal (Chekda chipta raqami va mijoz ismi chiqadi) */}
       {ticketData && (
         <ThermalTicketModal
           ticketData={ticketData}

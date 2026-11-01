@@ -74,12 +74,18 @@ export function ThermalTicketModal({ ticketData, onClose }) {
             <div className="text-xs text-slate-500 uppercase tracking-widest font-semibold">
               Sizning navbatingiz
             </div>
-            <div className="text-5xl font-extrabold tracking-tight text-blue-900 my-1 font-sans">
+            <div className="text-5xl font-extrabold tracking-tight text-emerald-950 my-1 font-sans">
               {ticket.ticketNumber}
             </div>
-            <div className="text-xs font-bold text-slate-700 px-2 line-clamp-1">
+            <div className="text-xs font-bold text-emerald-800 px-2 line-clamp-1">
               {service.name}
             </div>
+            {ticket.clientIdentifier && (
+              <div className="text-[11px] font-extrabold text-slate-800 mt-1 border-t border-slate-200 pt-1">
+                Mijoz: {ticket.clientIdentifier}
+                {ticket.clientPhone && <span className="block text-[10px] text-slate-500">{ticket.clientPhone}</span>}
+              </div>
+            )}
           </div>
 
           {/* Details */}

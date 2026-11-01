@@ -64,6 +64,32 @@ export function QueueProvider({ children }) {
   const [devices, setDevices] = useState(() => getSafeArray(STORAGE_KEY + '_devices', INITIAL_DEVICES));
   const [auditLogs, setAuditLogs] = useState(() => getSafeArray(STORAGE_KEY + '_audit', INITIAL_AUDIT_LOGS));
 
+  // Talab 7: Yangi xodimlardan kelgan arizalar (Adminga boradi)
+  const [staffRequests, setStaffRequests] = useState(() => getSafeArray(STORAGE_KEY + '_staff_requests', [
+    {
+      id: 'req-sample-1',
+      name: 'Sherzod Qodirov',
+      login: 'OP-106',
+      password: '123',
+      phone: '+998 90 987-65-43',
+      windowNumber: '6',
+      branchId: 'branch-1',
+      authorizedServiceIds: ['srv-general', 'srv-accounting'],
+      createdAt: Date.now() - 25 * 60 * 1000,
+      status: 'PENDING',
+    }
+  ]));
+
+  // Talab 6: Ro'yxatdan o'tgan mijozlar akkauntlari
+  const [registeredClients, setRegisteredClients] = useState(() => getSafeArray(STORAGE_KEY + '_clients', [
+    {
+      id: 'cli-1',
+      fullName: 'Otabek Mirzayev',
+      phone: '+998 90 123-45-67',
+      registeredAt: Date.now() - 3600000,
+    }
+  ]));
+
   const [activeBranchId, setActiveBranchId] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY + '_branchId');
@@ -140,11 +166,13 @@ export function QueueProvider({ children }) {
       localStorage.setItem(STORAGE_KEY + '_tickets', JSON.stringify(tickets));
       localStorage.setItem(STORAGE_KEY + '_devices', JSON.stringify(devices));
       localStorage.setItem(STORAGE_KEY + '_audit', JSON.stringify(auditLogs));
+      localStorage.setItem(STORAGE_KEY + '_staff_requests', JSON.stringify(staffRequests));
+      localStorage.setItem(STORAGE_KEY + '_clients', JSON.stringify(registeredClients));
       localStorage.setItem(STORAGE_KEY + '_branchId', activeBranchId);
     } catch (e) {
       console.warn('Storage save error:', e);
     }
-  }, [branches, services, staff, tickets, devices, auditLogs, activeBranchId]);
+  }, [branches, services, staff, tickets, devices, auditLogs, staffRequests, registeredClients, activeBranchId]);
 
   const addAuditLog = (action, details, operatorId = null, ticketNumber = null) => {
     const newLog = {
@@ -178,9 +206,32 @@ export function QueueProvider({ children }) {
   };
 
   /**
-   * KIOSK: Create ticket
+   * Talab 6: Register or update client account
    */
-  const createTicket = (serviceId, isVip = false, clientName = null) => {
+  const registerClient = (fullName, phone) => {
+    if (!fullName || !phone) return null;
+    const existing = registeredClients.find((c) => c.phone === phone);
+    if (existing) {
+      const updated = registeredClients.map((c) =>
+        c.phone === phone ? { ...c, fullName } : c
+      );
+      setRegisteredClients(updated);
+      return { ...existing, fullName };
+    }
+    const newClient = {
+      id: `cli-${Date.now()}`,
+      fullName,
+      phone,
+      registeredAt: Date.now(),
+    };
+    setRegisteredClients([newClient, ...registeredClients]);
+    return newClient;
+  };
+
+  /**
+   * KIOSK: Create ticket with Client Name and Phone (Talab 6)
+   */
+  const createTicket = (serviceId, isVip = false, clientName = null, clientPhone = null) => {
     const branchList = branches || INITIAL_BRANCHES;
     const serviceList = services || INITIAL_SERVICES;
     const ticketList = tickets || [];
@@ -216,6 +267,7 @@ export function QueueProvider({ children }) {
       status: TICKET_STATUS.WAITING,
       priority: isVip ? TICKET_PRIORITY.VIP : TICKET_PRIORITY.REGULAR,
       clientIdentifier: clientName || (isVip ? `VIP Sodiqlik #${nextSeqNum}` : `Mijoz #${nextSeqNum}`),
+      clientPhone: clientPhone || null,
       createdAt: Date.now(),
       calledAt: null,
       startedAt: null,
@@ -227,7 +279,7 @@ export function QueueProvider({ children }) {
     const updatedTickets = [...ticketList, newTicket];
     const updatedLogs = addAuditLog(
       'TICKET_CREATED',
-      `${newTicket.ticketNumber} navbati yaratildi (${service.name})`,
+      `${newTicket.ticketNumber} navbati yaratildi (${service.name}) - ${newTicket.clientIdentifier}`,
       null,
       newTicket.ticketNumber
     );
@@ -810,6 +862,98 @@ export function QueueProvider({ children }) {
     return { success: true, staff: newStaffMember };
   };
 
+  /**
+   * Talab 7: Xodim ariza topshirishi (Adminga yuboriladi)
+   */
+  const submitStaffRequest = (requestData) => {
+    const existing = staff.find((s) => s.login === requestData.login || s.name === requestData.name);
+    if (existing) {
+      return { success: false, error: 'Bu nomdagi xodim tizimda allaqachon mavjud!' };
+    }
+
+    const newReq = {
+      id: `req-${Date.now()}`,
+      name: requestData.name,
+      login: requestData.login || `OP-${100 + staff.length + staffRequests.length + 1}`,
+      password: requestData.password || '123',
+      phone: requestData.phone || '',
+      windowNumber: requestData.windowNumber || `${staff.length + 1}`,
+      branchId: requestData.branchId || activeBranchId || 'branch-1',
+      authorizedServiceIds: requestData.authorizedServiceIds || ['srv-general', 'srv-accounting'],
+      createdAt: Date.now(),
+      status: 'PENDING',
+    };
+
+    const updated = [newReq, ...staffRequests];
+    setStaffRequests(updated);
+    addAuditLog('STAFF_REQUEST_SUBMITTED', `Yangi xodimlik arizasi: ${newReq.name} (${newReq.windowNumber}-oyna)`);
+    return { success: true, request: newReq };
+  };
+
+  /**
+   * Talab 7: Admin xodim arizasini qabul qilishi
+   */
+  const approveStaffRequest = (requestId) => {
+    const req = staffRequests.find((r) => r.id === requestId);
+    if (!req) return { success: false, error: 'Ariza topilmadi' };
+
+    const newStaffMember = {
+      id: `staff-${Date.now()}`,
+      name: req.name,
+      login: req.login,
+      password: req.password,
+      phone: req.phone,
+      windowNumber: req.windowNumber,
+      branchId: req.branchId || activeBranchId || 'branch-1',
+      authorizedServiceIds: req.authorizedServiceIds || ['srv-general', 'srv-accounting'],
+      status: STAFF_STATUS.AVAILABLE,
+      currentTicketId: null,
+      pauseReason: null,
+      servedCountToday: 0,
+      noShowCountToday: 0,
+      lastServiceFinishedAt: null,
+      totalServiceMinutes: 0,
+    };
+
+    const updatedStaff = [...staff, newStaffMember];
+    const updatedRequests = staffRequests.map((r) =>
+      r.id === requestId ? { ...r, status: 'APPROVED' } : r
+    );
+
+    setStaff(updatedStaff);
+    setStaffRequests(updatedRequests);
+    broadcastState(tickets, updatedStaff);
+    addAuditLog('STAFF_APPROVED', `Admin ${req.name} arizasini tasdiqladi va xodim qo‘shildi!`);
+    return { success: true, staff: newStaffMember };
+  };
+
+  /**
+   * Talab 7: Admin xodim arizasini rad etishi
+   */
+  const rejectStaffRequest = (requestId) => {
+    const req = staffRequests.find((r) => r.id === requestId);
+    const updatedRequests = staffRequests.map((r) =>
+      r.id === requestId ? { ...r, status: 'REJECTED' } : r
+    );
+    setStaffRequests(updatedRequests);
+    addAuditLog('STAFF_REJECTED', `Admin ${req?.name || ''} arizasini rad etdi`);
+    return { success: true };
+  };
+
+  /**
+   * Talab 7: Admin xodimni tizimdan o'chira olishi
+   */
+  const deleteStaff = (staffId) => {
+    const target = staff.find((s) => s.id === staffId);
+    if (!target) return { success: false, error: 'Xodim topilmadi' };
+
+    const updatedStaff = staff.filter((s) => s.id !== staffId);
+    setStaff(updatedStaff);
+    broadcastState(tickets, updatedStaff);
+    addAuditLog('STAFF_DELETED', `Admin ${target.name} (${target.windowNumber}-oyna) xodimini tizimdan o‘chirdi!`);
+    return { success: true };
+  };
+
   const resetToDemo = () => {
     setBranches(INITIAL_BRANCHES);
     setServices(INITIAL_SERVICES);
@@ -817,6 +961,8 @@ export function QueueProvider({ children }) {
     setTickets(INITIAL_TICKETS);
     setDevices(INITIAL_DEVICES);
     setAuditLogs(INITIAL_AUDIT_LOGS);
+    setStaffRequests([]);
+    setRegisteredClients([]);
     try {
       localStorage.clear();
     } catch {}
@@ -846,6 +992,8 @@ export function QueueProvider({ children }) {
         devices: devices || INITIAL_DEVICES,
         auditLogs: auditLogs || INITIAL_AUDIT_LOGS,
         operatorAlerts: operatorAlerts || [],
+        staffRequests: staffRequests || [],
+        registeredClients: registeredClients || [],
         activeBranchId,
         setActiveBranchId,
         activeStaffId,
@@ -870,6 +1018,11 @@ export function QueueProvider({ children }) {
         addDevice,
         deleteDevice,
         addStaff,
+        deleteStaff,
+        submitStaffRequest,
+        approveStaffRequest,
+        rejectStaffRequest,
+        registerClient,
         toggleServiceActive,
         sendOperatorAlert,
         resetToDemo,

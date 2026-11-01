@@ -266,25 +266,30 @@ export function DisplayView({ onNavigate }) {
             {spotlightTicket ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center text-center my-auto">
                 
-                {/* Chipta Raqami */}
-                <div className="bg-emerald-50/70 border-2 border-emerald-300 rounded-3xl p-6 sm:p-8 shadow-inner">
+                {/* Chipta Raqami (Talab 4: whitespace-nowrap, tiqilmasligi uchun moslashuvchan o'lcham) */}
+                <div className="bg-emerald-50/70 border-2 border-emerald-300 rounded-3xl p-5 sm:p-7 shadow-inner min-w-0">
                   <div className="text-xs uppercase tracking-widest text-emerald-800 font-extrabold mb-1">
                     Chipta Raqami
                   </div>
-                  <div className="text-7xl sm:text-8xl md:text-9xl font-black text-emerald-950 font-sans tracking-tight">
+                  <div className="text-5xl sm:text-6xl md:text-7xl xl:text-8xl font-black text-emerald-950 font-sans tracking-tight whitespace-nowrap py-3">
                     {spotlightTicket.ticketNumber}
                   </div>
-                  <div className="text-sm font-bold text-emerald-800 mt-2 truncate">
+                  <div className="text-sm font-bold text-emerald-800 mt-1 truncate">
                     {services.find((s) => s.id === spotlightTicket.serviceId)?.name || 'Xizmat turi'}
                   </div>
+                  {spotlightTicket.clientIdentifier && (
+                    <div className="text-xs font-semibold text-slate-600 mt-0.5 truncate">
+                      {spotlightTicket.clientIdentifier}
+                    </div>
+                  )}
                 </div>
 
                 {/* Qabul Oynasi */}
-                <div className="bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-950 border-2 border-emerald-700 text-white rounded-3xl p-6 sm:p-8 shadow-xl">
+                <div className="bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-950 border-2 border-emerald-700 text-white rounded-3xl p-5 sm:p-7 shadow-xl min-w-0">
                   <div className="text-xs uppercase tracking-widest text-emerald-200 font-extrabold mb-1">
                     Qabul Oynasi
                   </div>
-                  <div className="text-6xl sm:text-7xl md:text-8xl font-black text-amber-300 font-sans tracking-tight flex items-center justify-center gap-2">
+                  <div className="text-5xl sm:text-6xl md:text-7xl xl:text-8xl font-black text-amber-300 font-sans tracking-tight flex items-center justify-center gap-2.5 whitespace-nowrap py-3">
                     <span>{spotlightTicket.windowNumber || '1'}</span>
                     <span className="text-2xl sm:text-3xl text-emerald-100 font-extrabold uppercase">
                       Oyna
