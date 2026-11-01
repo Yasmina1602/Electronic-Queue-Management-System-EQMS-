@@ -4,18 +4,16 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { Navbar } from './components/Navbar';
 import { KioskView } from './components/KioskView';
 import { StaffView } from './components/StaffView';
-import { ManagerDashboard } from './components/ManagerDashboard';
-import { SuperAdminDashboard } from './components/SuperAdminDashboard';
+import { AdminDashboard } from './components/AdminDashboard';
 import { DisplayView } from './components/DisplayView';
 import { Bell, CheckCircle2, AlertCircle, Info } from 'lucide-react';
 
-// Dedicated URL Routes (Mijozlar sahifasi va xodimlar sahifasi alohida URLlarda)
+// 4 ta alohida Page yo'llari (Talab 1)
 export const ROUTES = {
-  KIOSK: '/', // Mijozlar terminali (Kiosk)
-  STAFF: '/staff-portal-auth-88', // Xodimlar / Operator ish stoli
-  MANAGER: '/manager-analytics-77', // Menejer tahlili
-  ADMIN: '/admin-control-secure', // Super Admin
-  DISPLAY: '/display', // Katta Tablo (TV ekran)
+  KIOSK: '/', // 1. Mijozlar terminali (Kiosk)
+  STAFF: '/staff', // 2. Xodimlar / Operator ish stoli
+  DISPLAY: '/display', // 3. Monitordagi elektron navbat (Katta Tablo)
+  ADMIN: '/admin', // 4. Admin va samaradorlik
 };
 
 function getViewFromLocation() {
@@ -27,17 +25,15 @@ function getViewFromLocation() {
     // Check query params
     if (viewQuery) {
       if (['staff', 'staff-portal-auth-88', 'operator'].includes(viewQuery)) return 'staff';
-      if (['manager', 'manager-analytics-77'].includes(viewQuery)) return 'manager';
-      if (['admin', 'admin-control-secure', 'superadmin'].includes(viewQuery)) return 'admin';
-      if (['display', 'tv', 'tablo'].includes(viewQuery)) return 'display';
+      if (['admin', 'admin-control-secure', 'superadmin', 'manager'].includes(viewQuery)) return 'admin';
+      if (['display', 'tv', 'tablo', 'monitor'].includes(viewQuery)) return 'display';
       if (['kiosk', 'mijoz', 'client'].includes(viewQuery)) return 'kiosk';
     }
 
     // Check URL pathnames
-    if (path.includes('staff-portal-auth-88') || path === '/staff') return 'staff';
-    if (path.includes('manager-analytics-77') || path === '/manager') return 'manager';
-    if (path.includes('admin-control-secure') || path === '/admin') return 'admin';
-    if (path === '/display' || path === '/tablo' || path === '/tv') return 'display';
+    if (path.includes('staff') || path.includes('operator')) return 'staff';
+    if (path.includes('display') || path.includes('tablo') || path.includes('monitor') || path.includes('tv')) return 'display';
+    if (path.includes('admin') || path.includes('manager')) return 'admin';
 
     // Default root is customer kiosk
     return 'kiosk';
@@ -57,7 +53,6 @@ function MainApp() {
     try {
       let targetPath = ROUTES.KIOSK;
       if (view === 'staff') targetPath = ROUTES.STAFF;
-      else if (view === 'manager') targetPath = ROUTES.MANAGER;
       else if (view === 'admin') targetPath = ROUTES.ADMIN;
       else if (view === 'display') targetPath = ROUTES.DISPLAY;
 
@@ -90,7 +85,7 @@ function MainApp() {
         const currentStaffId = activeStaffId || staff?.[0]?.id || 'staff-1';
         const operator = staff?.find((s) => s.id === currentStaffId) || staff?.[0];
 
-        // autoAdvance=true: agar oldingi mijoz bo'lsa yakunlaydi, pauzada bo'lsa faollashtiradi va keyingisini chaqiradi
+        // autoAdvance=true: avtomatik teng taqsimlash qoidasi bo'yicha keyingisini chaqiradi
         const res = callNextCustomer(currentStaffId, true);
 
         if (toastTimer) clearTimeout(toastTimer);
@@ -98,12 +93,15 @@ function MainApp() {
         if (res?.success && res?.ticket) {
           setGlobalToast({
             type: 'success',
-            title: 'F2 — Keyingi mijoz chaqirildi',
+            title: res.turnSkipped
+              ? 'F2 — Teng taqsimlash bo‘yicha chaqirildi'
+              : 'F2 — Keyingi mijoz chaqirildi',
             ticketNumber: res.ticket.ticketNumber,
             windowNumber: res.ticket.windowNumber || operator?.windowNumber || '1',
-            staffName: operator?.name || 'Operator',
+            staffName: res.operator?.name || operator?.name || 'Operator',
             serviceName: res.ticket.serviceName,
             previousCompleted: res.previousCompleted,
+            message: res.message,
           });
         } else if (res?.empty) {
           setGlobalToast({
@@ -137,26 +135,27 @@ function MainApp() {
   const isDisplayPage = currentView === 'display';
 
   return (
-    <div className="min-h-screen bg-[#0b1329] text-slate-100 flex flex-col font-sans relative">
-      {/* Global F2 HUD Notification Popup */}
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans relative">
+      
+      {/* Global F2 HUD Notification Popup - Oq va To'q Yashil */}
       {globalToast && (
         <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none transition-all duration-300 max-w-md w-[92vw] sm:w-full">
           <div
-            className={`p-4 rounded-2xl shadow-2xl backdrop-blur-xl border flex items-start gap-3.5 ${
+            className={`p-4 rounded-3xl shadow-2xl backdrop-blur-xl border-2 flex items-start gap-3.5 bg-white ${
               globalToast.type === 'success'
-                ? 'bg-slate-900/95 border-emerald-500/60 shadow-emerald-500/20 text-white'
+                ? 'border-emerald-700 shadow-emerald-950/20 text-slate-900'
                 : globalToast.type === 'info'
-                ? 'bg-slate-900/95 border-blue-500/60 shadow-blue-500/20 text-white'
-                : 'bg-slate-900/95 border-amber-500/60 shadow-amber-500/20 text-white'
+                ? 'border-emerald-600 shadow-emerald-950/20 text-slate-900'
+                : 'border-amber-600 shadow-amber-950/20 text-slate-900'
             }`}
           >
             <div
-              className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${
                 globalToast.type === 'success'
-                  ? 'bg-gradient-to-tr from-emerald-600 to-teal-500 text-white'
+                  ? 'bg-gradient-to-tr from-emerald-900 to-emerald-700 text-white'
                   : globalToast.type === 'info'
-                  ? 'bg-gradient-to-tr from-blue-600 to-indigo-500 text-white'
-                  : 'bg-gradient-to-tr from-amber-600 to-orange-500 text-white'
+                  ? 'bg-gradient-to-tr from-emerald-800 to-teal-700 text-white'
+                  : 'bg-gradient-to-tr from-amber-700 to-orange-600 text-white'
               }`}
             >
               <span className="font-mono font-black text-sm">F2</span>
@@ -164,11 +163,11 @@ function MainApp() {
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
-                <h4 className="text-[11px] font-black tracking-wider uppercase text-slate-300 flex items-center gap-1.5">
-                  <Bell className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                <h4 className="text-[11px] font-black tracking-wider uppercase text-emerald-950 flex items-center gap-1.5">
+                  <Bell className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
                   {globalToast.title}
                 </h4>
-                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-slate-300 shrink-0">
+                <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 shrink-0">
                   Global Hotkey
                 </span>
               </div>
@@ -176,25 +175,30 @@ function MainApp() {
               {globalToast.ticketNumber ? (
                 <div className="mt-1">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-black text-emerald-400 tracking-tight">
+                    <span className="text-2xl font-black text-emerald-900 tracking-tight">
                       {globalToast.ticketNumber}
                     </span>
-                    <span className="text-sm font-extrabold text-slate-200">
+                    <span className="text-sm font-extrabold text-emerald-800">
                       ➔ {globalToast.windowNumber}-Oyna
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-0.5 truncate font-medium">
+                  <p className="text-xs text-slate-600 mt-0.5 truncate font-semibold">
                     {globalToast.serviceName} • {globalToast.staffName}
                   </p>
+                  {globalToast.message && (
+                    <p className="text-[11px] text-emerald-800 mt-1 font-bold">
+                      {globalToast.message}
+                    </p>
+                  )}
                   {globalToast.previousCompleted && (
-                    <p className="text-[11px] text-emerald-400/90 mt-1 font-semibold flex items-center gap-1">
+                    <p className="text-[11px] text-emerald-700 mt-0.5 font-semibold flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" />
                       Avvalgi {globalToast.previousCompleted} yakunlandi
                     </p>
                   )}
                 </div>
               ) : (
-                <p className="text-xs font-semibold text-slate-200 mt-1">
+                <p className="text-xs font-semibold text-slate-700 mt-1">
                   {globalToast.message}
                 </p>
               )}
@@ -216,9 +220,8 @@ function MainApp() {
           {currentView === 'staff' && (
             <StaffView onNavigateHome={() => navigateTo('kiosk')} />
           )}
-          {currentView === 'manager' && <ManagerDashboard />}
-          {currentView === 'admin' && <SuperAdminDashboard />}
           {currentView === 'display' && <DisplayView onNavigate={navigateTo} />}
+          {currentView === 'admin' && <AdminDashboard />}
         </ErrorBoundary>
       </main>
     </div>

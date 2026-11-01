@@ -2,84 +2,68 @@ import React, { useState, useEffect } from 'react';
 import { useQueue } from '../context/QueueContext';
 import { ThermalTicketModal } from './ThermalTicketModal';
 import {
-  Wallet,
-  FileText,
-  PiggyBank,
-  CreditCard,
-  Briefcase,
-  Info,
+  Layers,
+  Calculator,
   QrCode,
   Sparkles,
-  Camera,
-  CheckCircle2,
-  X,
-  Layers,
-  Calculator,
-  ArrowLeft,
   ChevronRight,
-  Lock,
+  ShieldCheck,
+  Printer,
+  KeyRound,
+  ArrowRight,
+  CheckCircle2,
 } from 'lucide-react';
-
-const ICON_MAP = {
-  Wallet,
-  FileText,
-  PiggyBank,
-  CreditCard,
-  Briefcase,
-  Info,
-  Layers,
-  Calculator,
-};
 
 export function KioskView({ onNavigateStaff }) {
   const { services, branches, activeBranchId, createTicket } = useQueue();
-  const [selectedCategory, setSelectedCategory] = useState(null); // null = Main screen (2 categories), 'general' or 'accounting'
   const [ticketData, setTicketData] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedServiceId, setSelectedServiceId] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [showLoyaltyModal, setShowLoyaltyModal] = useState(false);
-  const [loyaltyCode, setLoyaltyCode] = useState('');
-  const [loyaltySuccess, setLoyaltySuccess] = useState(false);
+  const [showVipModal, setShowVipModal] = useState(false);
+  const [vipCardInput, setVipCardInput] = useState('');
 
-  const activeBranch = branches.find((b) => b.id === activeBranchId) || branches[0];
-
+  // Clock tick
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Auto-return to main categories after 40 seconds of inactivity on sub-service screens
-  useEffect(() => {
-    if (!selectedCategory) return;
-    const idleTimer = setTimeout(() => {
-      setSelectedCategory(null);
-    }, 40000);
-    return () => clearTimeout(idleTimer);
-  }, [selectedCategory]);
+  const activeBranch = branches.find((b) => b.id === activeBranchId) || branches[0];
 
-  const handleSelectService = (serviceId) => {
-    const result = createTicket(serviceId);
-    if (result.success) {
-      setTicketData(result);
-      // Reset back to main screen after printing
-      setTimeout(() => setSelectedCategory(null), 3500);
-    }
-  };
+  // 2 ta asosiy xizmat: Xizmatlar va Buxgalteriya
+  const xizmatlarService =
+    services.find((s) => s.id === 'srv-general' || s.id === 'srv-cash' || s.id === 'srv-all') ||
+    services[0] || {
+      id: 'srv-general',
+      name: 'Xizmatlar',
+      prefix: 'X',
+      description: 'Kassa, Kreditlar, Omonatlar, Kartalar va ma’lumotlar',
+    };
 
-  const handleApplyLoyalty = (e) => {
-    e.preventDefault();
-    if (!loyaltyCode) return;
-    setLoyaltySuccess(true);
+  const buxgalteriyaService =
+    services.find((s) => s.id === 'srv-accounting' || s.category === 'accounting') ||
+    services[1] || {
+      id: 'srv-accounting',
+      name: 'Buxgalteriya',
+      prefix: 'B',
+      description: 'Hisob-kitoblar, Soliq, To‘lov topshiriqlari va yuridik shaxslar',
+    };
+
+  // Kartani bosganda DARHOL chek chiqarish
+  const handleServiceClick = (service, isVip = false, clientName = null) => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+    setSelectedServiceId(service.id);
+
     setTimeout(() => {
-      const srv = services.find((s) => s.id === 'srv-credit') || services[0];
-      const result = createTicket(srv.id, true, `Sodiq Mijoz (${loyaltyCode})`);
-      setShowLoyaltyModal(false);
-      setLoyaltySuccess(false);
-      setLoyaltyCode('');
-      if (result.success) {
-        setTicketData(result);
-        setTimeout(() => setSelectedCategory(null), 3500);
+      const res = createTicket(service.id, isVip, clientName);
+      if (res.success) {
+        setTicketData(res);
       }
-    }, 1200);
+      setIsProcessing(false);
+      setSelectedServiceId(null);
+    }, 400);
   };
 
   const formattedTime = currentTime.toLocaleTimeString('uz-UZ', {
@@ -87,320 +71,222 @@ export function KioskView({ onNavigateStaff }) {
     minute: '2-digit',
   });
 
-  const generalServices = services.filter(
-    (s) => s.category !== 'accounting' && s.id !== 'srv-corp' && s.id !== 'srv-accounting'
-  );
-  const accountingServices = services.filter(
-    (s) => s.category === 'accounting' || s.id === 'srv-corp' || s.id === 'srv-accounting'
-  );
-
-  const displayedServices =
-    selectedCategory === 'accounting' ? accountingServices : generalServices;
-
   return (
-    <div className="min-h-screen flex flex-col items-center justify-between p-3 sm:p-6 bg-slate-950 text-slate-100">
+    <div className="min-h-screen flex flex-col items-center justify-between p-3 sm:p-6 bg-slate-100/90 text-slate-900 font-sans">
       
-      {/* Tablet Device Frame */}
-      <div className="w-full max-w-2xl bg-white text-slate-900 rounded-[2.5rem] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6)] border-[10px] border-slate-850 p-6 sm:p-10 flex flex-col justify-between relative overflow-hidden min-h-[760px] my-auto">
+      {/* Tablet Device Frame - Oq va To'q Yashil */}
+      <div className="w-full max-w-2xl bg-white text-slate-900 rounded-[2.5rem] shadow-[0_25px_60px_-15px_rgba(6,78,59,0.22)] border-[8px] border-emerald-950/10 p-6 sm:p-10 flex flex-col justify-between relative overflow-hidden min-h-[760px] my-auto">
         
         {/* Tablet Top Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
-          {/* Company Logo */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black shadow-md">
-              <Layers className="w-5 h-5 text-cyan-400" />
+        <div className="flex items-center justify-between border-b border-emerald-100 pb-4 mb-4">
+          {/* Bank / Company Logo */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-900 to-emerald-700 text-white flex items-center justify-center font-black shadow-md shadow-emerald-900/20">
+              <Layers className="w-5 h-5 text-emerald-200" />
             </div>
             <div className="text-left">
-              <div className="text-xs font-black tracking-tight uppercase text-slate-900">
-                Company
+              <div className="text-sm font-black tracking-tight text-emerald-950 uppercase">
+                ELEKTRON NAVBAT
               </div>
-              <div className="text-[10px] font-semibold text-slate-400 tracking-wider">
-                Logo
+              <div className="text-[10px] font-bold text-emerald-700 tracking-wider">
+                BOSHQARUV TIZIMI
               </div>
             </div>
           </div>
 
           {/* Time & Branch */}
           <div className="text-right">
-            <div className="text-xl font-extrabold text-slate-900 font-sans tracking-tight">
+            <div className="text-2xl font-black text-emerald-950 font-sans tracking-tight">
               {formattedTime}
             </div>
-            <div className="text-[11px] font-medium text-slate-400">
-              {activeBranch?.name}
+            <div className="text-xs font-semibold text-emerald-700/80">
+              {activeBranch?.name || 'Asosiy Bosh Filial'}
             </div>
           </div>
         </div>
 
-        {/* STEP 1: Main Category Selection (Barcha xizmatlar vs Buxgalteriya) */}
-        {selectedCategory === null && (
-          <div className="my-auto flex flex-col justify-center space-y-6 animate-fade-in">
-            <div>
-              <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-600 border border-blue-200/60 mb-2">
-                Elektron Navbat Kioski
-              </span>
-              <h1 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight leading-tight">
-                Tashrifingiz uchun rahmat!
-              </h1>
-              <p className="text-sm sm:text-base text-slate-500 mt-1.5 font-medium">
-                Iltimos, kerakli xizmat bo‘limini tanlang
-              </p>
-            </div>
-
-            {/* 2 Massive Premium Category Choice Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-              
-              {/* Option 1: Barcha xizmatlar (Chakana / Jismoniy shaxslar) */}
-              <button
-                onClick={() => setSelectedCategory('general')}
-                className="group relative flex flex-col justify-between p-6 rounded-3xl border-2 border-blue-200/70 hover:border-blue-500 bg-gradient-to-br from-blue-50/70 via-indigo-50/40 to-cyan-50/60 hover:from-blue-100/80 hover:to-cyan-100/80 text-left transition-all duration-300 shadow-md hover:shadow-xl hover:-translate-y-1 active:scale-[0.98] cursor-pointer"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-105 transition-transform">
-                    <Layers className="w-8 h-8 text-white" />
-                  </div>
-                  <span className="px-3 py-1 rounded-full text-[11px] font-black bg-blue-600 text-white shadow-xs">
-                    {generalServices.length} xizmat
-                  </span>
-                </div>
-
-                <div className="mt-8">
-                  <h3 className="text-2xl font-black text-slate-900 group-hover:text-blue-700 transition-colors">
-                    Xizmatlar
-                  </h3>
-                  <p className="text-xs font-medium text-slate-500 mt-1.5 line-clamp-2">
-                    Kassa, Kreditlar, Omonatlar, Kartalar va ma’lumotlar
-                  </p>
-                </div>
-
-                <div className="mt-5 pt-3 border-t border-blue-200/50 flex items-center justify-between text-xs font-bold text-blue-600 group-hover:text-blue-700">
-                  <span>Xizmatlarni tanlash</span>
-                  <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
-                </div>
-              </button>
-
-              {/* Option 2: Buxgalteriya (Buxgalteriya va Yuridik shaxslar) */}
-              <button
-                onClick={() => setSelectedCategory('accounting')}
-                className="group relative flex flex-col justify-between p-6 rounded-3xl border-2 border-amber-200/70 hover:border-amber-500 bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-yellow-50/60 hover:from-amber-100/80 hover:to-orange-100/80 text-left transition-all duration-300 shadow-md hover:shadow-xl hover:-translate-y-1 active:scale-[0.98] cursor-pointer"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/30 group-hover:scale-105 transition-transform">
-                    <Calculator className="w-8 h-8 text-white" />
-                  </div>
-                  <span className="px-3 py-1 rounded-full text-[11px] font-black bg-amber-500 text-white shadow-xs">
-                    {accountingServices.length} xizmat
-                  </span>
-                </div>
-
-                <div className="mt-8">
-                  <h3 className="text-2xl font-black text-slate-900 group-hover:text-amber-800 transition-colors">
-                    Buxgalteriya
-                  </h3>
-                  <p className="text-xs font-medium text-slate-500 mt-1.5 line-clamp-2">
-                    Hisob-kitoblar, Soliq, To‘lov topshiriqlari va yuridik shaxslar
-                  </p>
-                </div>
-
-                <div className="mt-5 pt-3 border-t border-amber-200/50 flex items-center justify-between text-xs font-bold text-amber-700 group-hover:text-amber-800">
-                  <span>Xizmatlarni tanlash</span>
-                  <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
-                </div>
-              </button>
-
-            </div>
+        {/* Hero Title Area */}
+        <div className="my-auto flex flex-col justify-center space-y-6">
+          <div>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200 mb-2.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
+              Elektron Navbat Kioski
+            </span>
+            <h1 className="text-3xl sm:text-4xl font-black text-emerald-950 tracking-tight leading-tight">
+              Tashrifingiz uchun rahmat!
+            </h1>
+            <p className="text-sm sm:text-base text-slate-600 mt-1.5 font-medium">
+              Iltimos, kerakli xizmat bo‘limini tanlang
+            </p>
           </div>
-        )}
 
-        {/* STEP 2: Sub-services view for the selected category */}
-        {selectedCategory !== null && (
-          <div className="my-auto space-y-4 animate-fade-in">
+          {/* 2 Massive Premium Choice Cards - 1-karta: Xizmatlar, 2-karta: Buxgalteriya */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
             
-            {/* Top Navigation Bar: Back Button + Category Toggle Tabs */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-50 p-2.5 rounded-2xl border border-slate-100">
-              <button
-                onClick={() => setSelectedCategory(null)}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 text-xs font-extrabold border border-slate-200/80 shadow-xs transition-all cursor-pointer active:scale-95"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>Bosh menyuga qaytish</span>
-              </button>
-
-              {/* Segmented Category Switcher */}
-              <div className="flex items-center gap-1 bg-slate-200/70 p-1 rounded-xl">
-                <button
-                  onClick={() => setSelectedCategory('general')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    selectedCategory === 'general'
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-                  }`}
-                >
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>Xizmatlar ({generalServices.length})</span>
-                </button>
-                <button
-                  onClick={() => setSelectedCategory('accounting')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    selectedCategory === 'accounting'
-                      ? 'bg-amber-600 text-white shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-                  }`}
-                >
-                  <Calculator className="w-3.5 h-3.5" />
-                  <span>Buxgalteriya ({accountingServices.length})</span>
-                </button>
+            {/* Karta 1: Xizmatlar */}
+            <button
+              onClick={() => handleServiceClick(xizmatlarService)}
+              disabled={isProcessing}
+              className={`group relative flex flex-col justify-between p-6 sm:p-7 rounded-3xl border-2 transition-all duration-300 text-left shadow-lg hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] cursor-pointer ${
+                selectedServiceId === xizmatlarService.id
+                  ? 'border-emerald-600 bg-emerald-50'
+                  : 'border-emerald-200/90 bg-gradient-to-br from-white via-emerald-50/40 to-emerald-100/30 hover:border-emerald-700 hover:from-white hover:to-emerald-100/60'
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-800 to-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-800/25 group-hover:scale-105 transition-transform">
+                  <Layers className="w-8 h-8 text-white" />
+                </div>
+                <span className="px-3 py-1 rounded-full text-[11px] font-black bg-emerald-800 text-white shadow-xs">
+                  Xizmatlar
+                </span>
               </div>
-            </div>
 
-            {/* Headline for Selected Group */}
-            <div className="px-1">
-              <h2 className="text-xl sm:text-2xl font-black text-slate-950">
-                {selectedCategory === 'accounting'
-                  ? 'Buxgalteriya va Yuridik shaxslar'
-                  : 'Xizmatlar ro‘yxati'}
-              </h2>
-              <p className="text-xs text-slate-500 font-medium">
-                Iltimos, kerakli operatsiyani bosing va navbat chekini oling
-              </p>
-            </div>
+              <div className="mt-8">
+                <h3 className="text-2xl font-black text-emerald-950 group-hover:text-emerald-800 transition-colors">
+                  Xizmatlar
+                </h3>
+                <p className="text-xs font-medium text-slate-600 mt-2 line-clamp-2 leading-relaxed">
+                  Kassa, Kreditlar, Omonatlar, Kartalar va ma’lumotlar
+                </p>
+              </div>
 
-            {/* Services Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {displayedServices.map((service) => {
-                const IconComponent = ICON_MAP[service.icon] || Info;
+              <div className="mt-5 pt-3.5 border-t border-emerald-200/70 flex items-center justify-between text-xs font-bold text-emerald-800 group-hover:text-emerald-900">
+                <span className="flex items-center gap-1.5">
+                  <Printer className="w-4 h-4 text-emerald-700" />
+                  Chek olish
+                </span>
+                <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+              </div>
+            </button>
 
-                return (
-                  <button
-                    key={service.id}
-                    onClick={() => handleSelectService(service.id)}
-                    disabled={!service.active}
-                    className={`group flex items-center gap-4 p-4 sm:p-5 rounded-2xl border transition-all duration-200 cursor-pointer text-left shadow-xs hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] ${
-                      service.bgClass || 'bg-slate-50 border-slate-100'
-                    }`}
-                  >
-                    {/* Icon box */}
-                    <div
-                      className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-xs transition-transform group-hover:scale-105 ${
-                        service.iconBg || 'bg-blue-100 text-blue-600'
-                      }`}
-                    >
-                      <IconComponent className="w-6 h-6" />
-                    </div>
+            {/* Karta 2: Buxgalteriya */}
+            <button
+              onClick={() => handleServiceClick(buxgalteriyaService)}
+              disabled={isProcessing}
+              className={`group relative flex flex-col justify-between p-6 sm:p-7 rounded-3xl border-2 transition-all duration-300 text-left shadow-lg hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] cursor-pointer ${
+                selectedServiceId === buxgalteriyaService.id
+                  ? 'border-emerald-600 bg-emerald-50'
+                  : 'border-emerald-200/90 bg-gradient-to-br from-white via-emerald-50/40 to-emerald-100/30 hover:border-emerald-700 hover:from-white hover:to-emerald-100/60'
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-900 to-teal-700 text-white flex items-center justify-center shadow-lg shadow-emerald-900/25 group-hover:scale-105 transition-transform">
+                  <Calculator className="w-8 h-8 text-white" />
+                </div>
+                <span className="px-3 py-1 rounded-full text-[11px] font-black bg-emerald-900 text-white shadow-xs">
+                  Buxgalteriya
+                </span>
+              </div>
 
-                    {/* Service Name */}
-                    <div className="flex-1 min-w-0">
-                      <div className="font-extrabold text-base text-slate-900 leading-snug">
-                        {service.name}
-                      </div>
-                      {service.description && (
-                        <div className="text-[11px] text-slate-500 font-normal line-clamp-1 mt-0.5">
-                          {service.description}
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+              <div className="mt-8">
+                <h3 className="text-2xl font-black text-emerald-950 group-hover:text-emerald-800 transition-colors">
+                  Buxgalteriya
+                </h3>
+                <p className="text-xs font-medium text-slate-600 mt-2 line-clamp-2 leading-relaxed">
+                  Hisob-kitoblar, Soliq, To‘lov topshiriqlari va yuridik shaxslar
+                </p>
+              </div>
+
+              <div className="mt-5 pt-3.5 border-t border-emerald-200/70 flex items-center justify-between text-xs font-bold text-emerald-800 group-hover:text-emerald-900">
+                <span className="flex items-center gap-1.5">
+                  <Printer className="w-4 h-4 text-emerald-700" />
+                  Chek olish
+                </span>
+                <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+              </div>
+            </button>
+
           </div>
-        )}
 
-        {/* Bottom Banner: Loyallik va Bonuslar (always present) */}
-        <div className="mt-4">
-          <button
-            onClick={() => setShowLoyaltyModal(true)}
-            className="w-full bg-gradient-to-r from-sky-500 via-cyan-500 to-emerald-500 hover:from-sky-600 hover:to-emerald-600 text-white rounded-2xl p-4 sm:p-5 flex items-center gap-4 shadow-lg shadow-cyan-500/20 transition-all cursor-pointer active:scale-[0.99] text-left"
+          {/* Bottom Banner: Loyallik va Bonuslar (To'q yashil) */}
+          <div
+            onClick={() => setShowVipModal(true)}
+            className="w-full bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-800 text-white p-4 sm:p-5 rounded-2xl flex items-center justify-between shadow-lg cursor-pointer hover:shadow-xl hover:scale-[1.01] transition-all"
           >
-            {/* QR icon */}
-            <div className="w-12 h-12 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center flex-shrink-0 backdrop-blur-xs">
-              <QrCode className="w-7 h-7 text-white" />
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center shrink-0 border border-white/20">
+                <QrCode className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-left">
+                <div className="text-sm font-black flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-emerald-300" />
+                  Loyallik va Bonuslar
+                </div>
+                <div className="text-xs text-emerald-100 font-medium mt-0.5">
+                  Loyallik QR-kodini skanerlash • Imtiyozli navbat va bonuslar
+                </div>
+              </div>
             </div>
+            <ArrowRight className="w-5 h-5 text-emerald-200" />
+          </div>
+        </div>
 
-            {/* Banner Text */}
-            <div className="flex-1 min-w-0">
-              <div className="text-base sm:text-lg font-black tracking-tight">
-                Loyallik va Bonuslar
-              </div>
-              <div className="text-xs text-white/90 font-medium">
-                Loyallik QR-kodini skanerlash
-              </div>
-              <div className="text-[11px] text-white/80">
-                Bonuslarni to‘plang va ishlating
-              </div>
-            </div>
-          </button>
+        {/* Footer info & Staff navigation */}
+        <div className="pt-4 border-t border-emerald-100 flex items-center justify-between text-xs text-slate-500">
+          <div className="flex items-center gap-1.5 text-emerald-900 font-bold">
+            <ShieldCheck className="w-4 h-4 text-emerald-700" />
+            <span>Xavfsiz va markazlashgan navbat tizimi</span>
+          </div>
+
+          {onNavigateStaff && (
+            <button
+              onClick={onNavigateStaff}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-emerald-800 hover:text-emerald-950 hover:bg-emerald-50 text-[11px] font-bold transition-all cursor-pointer"
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+              <span>Xodimlar kirishi</span>
+            </button>
+          )}
         </div>
 
       </div>
 
-      {/* Discrete footer for staff access */}
-      <footer className="mt-3 text-center">
-        <a
-          href="/staff-portal-auth-88"
-          onClick={(e) => {
-            e.preventDefault();
-            if (onNavigateStaff) {
-              onNavigateStaff();
-            } else {
-              window.location.href = '/staff-portal-auth-88';
-            }
-          }}
-          className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 transition-colors py-1 px-3 rounded-full hover:bg-slate-900 cursor-pointer"
-        >
-          <Lock className="w-3.5 h-3.5 text-slate-500" />
-          <span>Xodimlar xizmati portali (/staff-portal-auth-88)</span>
-        </a>
-      </footer>
+      {/* Modal: VIP / Loyalty Registration */}
+      {showVipModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-emerald-950/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border-2 border-emerald-700">
+            <h3 className="text-xl font-black text-emerald-950 mb-2">
+              Loyallik Kartasi / VIP Navbat
+            </h3>
+            <p className="text-xs text-slate-600 mb-4">
+              Karta raqamingiz yoki QR kodingizni kiriting. Tizim sizni imtiyozli (VIP) navbatga kiritadi.
+            </p>
+            <input
+              type="text"
+              value={vipCardInput}
+              onChange={(e) => setVipCardInput(e.target.value)}
+              placeholder="Masalan: VIP-7788 yoki Ismingiz"
+              className="w-full px-4 py-3 rounded-xl border border-emerald-300 focus:outline-hidden focus:border-emerald-700 text-sm font-semibold mb-4 bg-emerald-50/50"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowVipModal(false)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-700 hover:bg-slate-100 text-xs cursor-pointer"
+              >
+                Bekor qilish
+              </button>
+              <button
+                onClick={() => {
+                  setShowVipModal(false);
+                  handleServiceClick(xizmatlarService, true, vipCardInput || 'VIP Mijoz');
+                  setVipCardInput('');
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-emerald-800 text-white font-bold hover:bg-emerald-900 text-xs shadow-md cursor-pointer"
+              >
+                VIP Navbat olish
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Thermal Ticket Modal */}
+      {/* Modal: Thermal Ticket Modal */}
       {ticketData && (
         <ThermalTicketModal
           ticketData={ticketData}
           onClose={() => setTicketData(null)}
         />
-      )}
-
-      {/* Loyalty Modal */}
-      {showLoyaltyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-          <div className="bg-slate-900 border border-slate-700 text-white rounded-3xl p-6 sm:p-8 max-w-sm w-full space-y-4 shadow-2xl relative">
-            <button
-              onClick={() => setShowLoyaltyModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="text-center space-y-2">
-              <div className="w-14 h-14 rounded-2xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center mx-auto">
-                <Sparkles className="w-7 h-7" />
-              </div>
-              <h3 className="text-lg font-bold">VIP & Loyallik Dasturi</h3>
-              <p className="text-xs text-slate-400">
-                Mijoz ID yoki QR kod raqamingizni kiriting
-              </p>
-            </div>
-
-            <form onSubmit={handleApplyLoyalty} className="space-y-3">
-              <input
-                type="text"
-                placeholder="Masalan: VIP-7788"
-                value={loyaltyCode}
-                onChange={(e) => setLoyaltyCode(e.target.value)}
-                autoFocus
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-center text-lg font-mono font-bold tracking-widest text-cyan-400 focus:outline-none focus:border-cyan-500"
-              />
-
-              <button
-                type="submit"
-                disabled={!loyaltyCode || loyaltySuccess}
-                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black py-3 rounded-xl transition-all cursor-pointer disabled:opacity-40"
-              >
-                {loyaltySuccess ? 'Muvaffaqiyatli tasdiqlandi!' : 'Imtiyozli navbat olish'}
-              </button>
-            </form>
-          </div>
-        </div>
       )}
 
     </div>

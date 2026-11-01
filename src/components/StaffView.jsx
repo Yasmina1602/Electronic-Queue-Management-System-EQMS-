@@ -244,18 +244,18 @@ export function StaffView() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-[#0c1427] text-slate-100 flex font-sans">
+    <div className="min-h-[calc(100vh-4rem)] bg-slate-100 text-slate-900 flex font-sans">
       
-      {/* Left Icon Rail (INTERACTIVE - matching uploaded image 1 & 2-rasm) */}
-      <aside className="w-16 bg-[#0a1020] border-r border-slate-800/80 flex flex-col items-center justify-between py-5 flex-shrink-0 z-20">
+      {/* Left Icon Rail - To'q Yashil */}
+      <aside className="w-16 bg-emerald-950 border-r border-emerald-800 flex flex-col items-center justify-between py-5 flex-shrink-0 z-20 shadow-xl">
         <div className="space-y-6 flex flex-col items-center">
           {/* Brand/Logo Top Icon */}
           <button
             onClick={() => setActiveTab('workspace')}
             title="Bosh sahifa / Ish stoli"
-            className="w-10 h-10 rounded-xl bg-blue-600/20 text-blue-400 flex items-center justify-center border border-blue-500/30 hover:bg-blue-600 hover:text-white transition-all cursor-pointer"
+            className="w-10 h-10 rounded-xl bg-white text-emerald-950 flex items-center justify-center font-black shadow-md hover:scale-105 transition-all cursor-pointer"
           >
-            <Layers className="w-5 h-5" />
+            <Layers className="w-5 h-5 text-emerald-900" />
           </button>
 
           <div className="space-y-4">
@@ -265,8 +265,8 @@ export function StaffView() {
               title="Ish stoli (Workspace)"
               className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
                 activeTab === 'workspace'
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 ring-2 ring-blue-400'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  ? 'bg-emerald-700 text-white shadow-lg ring-2 ring-emerald-400'
+                  : 'text-emerald-200 hover:text-white hover:bg-emerald-900'
               }`}
             >
               <Layers className="w-5 h-5" />
@@ -278,8 +278,8 @@ export function StaffView() {
               title="Qabul tarixi (History)"
               className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
                 activeTab === 'history'
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 ring-2 ring-blue-400'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  ? 'bg-emerald-700 text-white shadow-lg ring-2 ring-emerald-400'
+                  : 'text-emerald-200 hover:text-white hover:bg-emerald-900'
               }`}
             >
               <History className="w-5 h-5" />
@@ -291,8 +291,8 @@ export function StaffView() {
               title="Sozlamalar (Settings)"
               className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
                 activeTab === 'settings'
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 ring-2 ring-blue-400'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  ? 'bg-emerald-700 text-white shadow-lg ring-2 ring-emerald-400'
+                  : 'text-emerald-200 hover:text-white hover:bg-emerald-900'
               }`}
             >
               <Settings className="w-5 h-5" />
@@ -304,8 +304,8 @@ export function StaffView() {
               title="Shaxsiy Analitika (Analytics)"
               className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
                 activeTab === 'analytics'
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 ring-2 ring-blue-400'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  ? 'bg-emerald-700 text-white shadow-lg ring-2 ring-emerald-400'
+                  : 'text-emerald-200 hover:text-white hover:bg-emerald-900'
               }`}
             >
               <BarChart2 className="w-5 h-5" />
@@ -348,23 +348,23 @@ export function StaffView() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col p-4 sm:p-6 overflow-x-hidden space-y-5">
         
-        {/* Top Header Bar (matching 2-rasm) */}
-        <div className="flex flex-wrap items-center justify-between gap-4 bg-[#111a33] border border-slate-800 rounded-2xl px-5 py-3.5 shadow-lg">
+        {/* Top Header Bar - Oq va To'q Yashil */}
+        <div className="flex flex-wrap items-center justify-between gap-4 bg-white border-2 border-emerald-200 rounded-2xl px-5 py-3.5 shadow-md">
           <div className="flex items-center gap-3">
-            <span className="text-blue-400 font-black text-xl">≡</span>
-            <span className="font-extrabold text-white text-base sm:text-lg">
+            <span className="text-emerald-800 font-black text-xl">≡</span>
+            <span className="font-extrabold text-emerald-950 text-base sm:text-lg">
               {currentBranch.name}
             </span>
           </div>
 
           <div className="flex flex-wrap items-center gap-4 text-xs">
             {/* Operator Switcher dropdown */}
-            <div className="flex items-center gap-2 text-slate-400">
-              <span>Operator:</span>
+            <div className="flex items-center gap-2 text-slate-600">
+              <span className="font-bold">Operator:</span>
               <select
                 value={activeStaffId}
                 onChange={(e) => setActiveStaffId(e.target.value)}
-                className="bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold focus:outline-none cursor-pointer"
+                className="bg-emerald-50 border border-emerald-300 text-emerald-950 rounded-lg px-2.5 py-1 text-xs font-bold focus:outline-hidden cursor-pointer"
               >
                 {staff.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -375,31 +375,31 @@ export function StaffView() {
             </div>
 
             {/* Active / Break Toggle Button */}
-            <div className="flex items-center gap-2 bg-[#0c1427] border border-slate-800 p-1 rounded-xl">
+            <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 p-1 rounded-xl">
               <button
                 onClick={() => updateStaffStatus(currentStaff.id, STAFF_STATUS.AVAILABLE)}
                 className={`px-3 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
                   currentStaff.status === STAFF_STATUS.AVAILABLE
-                    ? 'bg-emerald-500 text-slate-950 shadow'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-emerald-800 text-white shadow'
+                    : 'text-slate-600 hover:text-emerald-900'
                 }`}
               >
-                Active
+                Faol (Active)
               </button>
               <button
                 onClick={handleToggleBreak}
                 className={`px-3 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
                   currentStaff.status === STAFF_STATUS.PAUSED
-                    ? 'bg-amber-500 text-slate-950 shadow'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-amber-600 text-white shadow'
+                    : 'text-slate-600 hover:text-emerald-900'
                 }`}
               >
-                Break {currentStaff.pauseReason && `(${currentStaff.pauseReason})`}
+                Tanaffus {currentStaff.pauseReason && `(${currentStaff.pauseReason})`}
               </button>
             </div>
 
             {/* Date Time */}
-            <div className="font-mono text-slate-300 hidden md:block">
+            <div className="font-sans font-bold text-emerald-950 hidden md:block">
               {new Date().toLocaleDateString('uz-UZ')} {new Date().toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
             </div>
           </div>
@@ -410,10 +410,10 @@ export function StaffView() {
           <div
             className={`p-3.5 rounded-xl text-xs font-semibold flex items-center gap-2 ${
               notification.type === 'danger'
-                ? 'bg-red-500/20 border border-red-500 text-red-300'
+                ? 'bg-red-500/20 border border-red-500 text-red-700'
                 : notification.type === 'warning'
-                ? 'bg-amber-500/20 border border-amber-500 text-amber-300'
-                : 'bg-emerald-500/20 border border-emerald-500 text-emerald-300'
+                ? 'bg-amber-500/20 border border-amber-500 text-amber-800'
+                : 'bg-emerald-100 border border-emerald-500 text-emerald-900'
             }`}
           >
             <ShieldAlert className="w-4 h-4 flex-shrink-0" />
@@ -428,12 +428,12 @@ export function StaffView() {
             {/* Main Navbat Calling Box (8 cols) */}
             <div className="lg:col-span-8 flex flex-col gap-4">
               
-              <div className="bg-[#111a33] border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl relative overflow-hidden">
-                <div className="flex items-center justify-between text-xs text-slate-400 mb-3">
-                  <span className="font-bold text-white uppercase tracking-wider text-sm">Navbat</span>
+              <div className="bg-white border-2 border-emerald-200 rounded-3xl p-5 sm:p-6 shadow-xl relative overflow-hidden">
+                <div className="flex items-center justify-between text-xs text-slate-600 mb-3">
+                  <span className="font-extrabold text-emerald-950 uppercase tracking-wider text-sm">Navbat Boshqaruvi</span>
                   <div className="flex items-center gap-4">
-                    <span className="text-slate-400">Kutayotganlar: <strong className="text-white">{staffWaitingQueue.length}</strong></span>
-                    <span className="text-slate-400">Tanaffus: <strong className="text-white">{currentStaff.pauseReason || 'Yo‘q'}</strong></span>
+                    <span>Kutayotganlar: <strong className="text-emerald-900 font-black">{staffWaitingQueue.length} ta</strong></span>
+                    <span>Holat: <strong className="text-emerald-900 font-black">{currentStaff.pauseReason || 'Ish faoliyatida'}</strong></span>
                   </div>
                 </div>
 
@@ -479,70 +479,70 @@ export function StaffView() {
                 {/* Big Split Layout: Ticket Info on Left, Actions on Right */}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-stretch">
                   
-                  {/* Glowing Ticket Box (7 cols) */}
-                  <div className="md:col-span-7 bg-[#0b1224] border border-cyan-500/30 rounded-2xl p-6 flex flex-col justify-between shadow-[inset_0_0_30px_rgba(6,182,212,0.15)] relative">
+                  {/* Ticket Box (7 cols) - Oq va To'q Yashil */}
+                  <div className="md:col-span-7 bg-emerald-50/60 border-2 border-emerald-300 rounded-3xl p-6 flex flex-col justify-between shadow-inner relative">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold text-slate-400">Mijoz</span>
+                      <span className="text-xs font-bold text-slate-500 uppercase">Joriy Mijoz</span>
                       {activeTicket ? (
-                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                        <span className="px-3 py-1 rounded-full text-[11px] font-black bg-emerald-800 text-white shadow-sm">
                           {activeTicket.status === TICKET_STATUS.IN_SERVICE ? "Xizmat ko‘rsatilmoqda" : "Chaqirildi"}
                         </span>
                       ) : (
-                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-800 text-slate-400">
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 text-slate-600">
                           Bo‘sh
                         </span>
                       )}
                     </div>
 
-                    {/* Giant Cyan Ticket Number */}
-                    <div className="py-4 text-center">
-                      <div className="text-6xl sm:text-7xl font-black text-cyan-400 font-sans tracking-tight drop-shadow-[0_0_20px_rgba(34,211,238,0.5)]">
+                    {/* Giant Dark Emerald Ticket Number */}
+                    <div className="py-5 text-center">
+                      <div className="text-6xl sm:text-7xl md:text-8xl font-black text-emerald-950 font-sans tracking-tight">
                         {activeTicket ? activeTicket.ticketNumber : '—'}
                       </div>
                     </div>
 
                     {/* Ticket Sub-details */}
-                    <div className="space-y-1 text-xs text-slate-300 border-t border-slate-800/80 pt-3">
+                    <div className="space-y-1.5 text-xs text-slate-700 border-t border-emerald-200 pt-3">
                       <div className="flex justify-between">
-                        <span className="text-slate-400">Xizmat:</span>
-                        <span className="font-bold text-white truncate max-w-[180px]">
-                          {activeTicketService?.name || 'Kredit rasmiylashtirish'}
+                        <span className="text-slate-500 font-medium">Xizmat:</span>
+                        <span className="font-extrabold text-emerald-950 truncate max-w-[200px]">
+                          {activeTicketService?.name || 'Bank xizmati'}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-400">Kutish vaqti:</span>
-                        <span className="font-mono text-cyan-300 font-semibold">
+                        <span className="text-slate-500 font-medium">Kutish vaqti:</span>
+                        <span className="font-sans font-bold text-emerald-800">
                           {activeTicket
                             ? `${Math.max(1, Math.round((activeTicket.calledAt - activeTicket.createdAt) / 60000))} daqiqa`
-                            : '12:45'}
+                            : '0 daqiqa'}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-slate-400">Mijoz:</span>
-                        <span className="font-semibold text-slate-200">
-                          {activeTicket?.clientIdentifier || 'Sanhita.107209'}
+                        <span className="text-slate-500 font-medium">Mijoz:</span>
+                        <span className="font-bold text-slate-900">
+                          {activeTicket?.clientIdentifier || 'Mijoz'}
                         </span>
                       </div>
                     </div>
 
                     <div className="mt-3 text-right">
-                      <span className="text-[11px] font-extrabold uppercase px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                        {activeTicket?.status === TICKET_STATUS.IN_SERVICE ? 'Xizmatda' : 'Chaqirildi'}
+                      <span className="text-[11px] font-black uppercase px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300">
+                        {activeTicket?.status === TICKET_STATUS.IN_SERVICE ? 'Xizmat jarayonida' : 'Chaqiruv kutmoqda'}
                       </span>
                     </div>
                   </div>
 
                   {/* Action Buttons Column (5 cols) */}
-                  <div className="md:col-span-5 flex flex-col justify-between gap-2.5">
+                  <div className="md:col-span-5 flex flex-col justify-between gap-3">
                     
                     {/* Keyingi mijoz */}
                     <button
                       onClick={handleNextCustomer}
                       disabled={currentStaff.status !== STAFF_STATUS.AVAILABLE}
-                      className="w-full bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-400 hover:to-green-400 text-slate-950 font-black text-sm sm:text-base py-3.5 px-4 rounded-xl flex items-center justify-between shadow-lg shadow-emerald-500/20 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
+                      className="w-full bg-gradient-to-r from-emerald-900 via-emerald-800 to-emerald-900 hover:from-emerald-950 hover:to-emerald-850 text-white font-black text-sm sm:text-base py-4 px-4 rounded-2xl flex items-center justify-between shadow-lg shadow-emerald-900/25 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
                     >
                       <span>Keyingi mijoz (F2)</span>
-                      <Play className="w-5 h-5 fill-current" />
+                      <Play className="w-5 h-5 fill-current text-emerald-300" />
                     </button>
 
                     {/* Qayta chaqirish */}
@@ -608,30 +608,30 @@ export function StaffView() {
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                 
                 {/* Secondary Navbat Card (4 cols) */}
-                <div className="md:col-span-4 bg-[#111a33] border border-slate-800 rounded-2xl p-4 flex flex-col justify-between shadow-md">
-                  <div className="text-xs font-bold text-slate-400 mb-2">Navbat / Kutayotganlar</div>
-                  <div className="bg-[#0b1224] p-3 rounded-xl border border-slate-800 my-auto">
-                    <div className="flex justify-between items-center text-[11px] text-slate-400 mb-1">
+                <div className="md:col-span-4 bg-white border-2 border-emerald-200 rounded-2xl p-4 flex flex-col justify-between shadow-md">
+                  <div className="text-xs font-bold text-slate-500 mb-2">Navbatdagi Mijoz</div>
+                  <div className="bg-emerald-50/70 p-3 rounded-xl border border-emerald-200 my-auto">
+                    <div className="flex justify-between items-center text-[11px] text-slate-500 mb-1">
                       <span>Mijoz</span>
-                      <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[10px]">Pending</span>
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-200 text-emerald-900 text-[10px] font-bold">Kutmoqda</span>
                     </div>
-                    <div className="text-2xl font-black text-cyan-400 font-sans">
+                    <div className="text-2xl font-black text-emerald-950 font-sans">
                       {staffWaitingQueue[0]?.ticketNumber || 'X-103'}
                     </div>
-                    <div className="text-[11px] text-slate-400 truncate mt-1">
-                      Kutish: {staffWaitingQueue[0] ? `${Math.max(1, Math.round((Date.now() - staffWaitingQueue[0].createdAt) / 60000))} daqiqa` : '12:45'}
+                    <div className="text-[11px] text-slate-500 truncate mt-1">
+                      Kutish: {staffWaitingQueue[0] ? `${Math.max(1, Math.round((Date.now() - staffWaitingQueue[0].createdAt) / 60000))} daqiqa` : '5 daqiqa'}
                     </div>
                   </div>
                   <div className="flex gap-1.5 mt-2">
                     <button
                       onClick={() => activeTicket && recallCustomer(activeTicket.id)}
-                      className="flex-1 py-1.5 bg-[#d97706] hover:bg-[#b45309] text-white rounded-lg text-[10px] font-bold cursor-pointer"
+                      className="flex-1 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[10px] font-bold cursor-pointer"
                     >
                       Qayta chaqirish 🔊
                     </button>
                     <button
                       onClick={() => activeTicket && completeService(activeTicket.id)}
-                      className="flex-1 py-1.5 bg-[#e11d48] hover:bg-[#be123c] text-white rounded-lg text-[10px] font-bold cursor-pointer"
+                      className="flex-1 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-[10px] font-bold cursor-pointer"
                     >
                       Yakunlash ✔
                     </button>
@@ -639,20 +639,20 @@ export function StaffView() {
                 </div>
 
                 {/* Quick Chat / Alerts (4 cols) */}
-                <div className="md:col-span-4 bg-[#111a33] border border-slate-800 rounded-2xl p-4 flex flex-col justify-between shadow-md">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-400 mb-2">
-                    <span>Quick Chat</span>
-                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <div className="md:col-span-4 bg-white border-2 border-emerald-200 rounded-2xl p-4 flex flex-col justify-between shadow-md">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-2">
+                    <span>Xabarlar & Ogohlantirishlar</span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
                   </div>
                   
                   <div className="space-y-2 max-h-24 overflow-y-auto text-[11px] pr-1">
                     {operatorAlerts.slice(0, 2).map((a) => (
-                      <div key={a.id} className="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
-                        <div className="text-emerald-400 font-bold text-[10px] flex justify-between">
+                      <div key={a.id} className="bg-emerald-50/60 p-2 rounded-lg border border-emerald-200">
+                        <div className="text-emerald-900 font-bold text-[10px] flex justify-between">
                           <span>{a.sender}</span>
-                          <span className="text-slate-500">{a.time}</span>
+                          <span className="text-slate-400">{a.time}</span>
                         </div>
-                        <p className="text-slate-300 text-[10px] leading-tight line-clamp-2 mt-0.5">
+                        <p className="text-slate-700 text-[10px] leading-tight line-clamp-2 mt-0.5">
                           {a.message}
                         </p>
                       </div>
@@ -665,11 +665,11 @@ export function StaffView() {
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
                       placeholder="Xabar yozing..."
-                      className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-[11px] text-white focus:outline-none"
+                      className="flex-1 bg-slate-50 border border-emerald-300 rounded-lg px-2.5 py-1 text-[11px] text-slate-900 focus:outline-hidden"
                     />
                     <button
                       type="submit"
-                      className="p-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg cursor-pointer"
+                      className="p-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg cursor-pointer"
                     >
                       <Send className="w-3 h-3" />
                     </button>
@@ -677,24 +677,24 @@ export function StaffView() {
                 </div>
 
                 {/* Statistika 4 Cards (4 cols) */}
-                <div className="md:col-span-4 bg-[#111a33] border border-slate-800 rounded-2xl p-4 shadow-md flex flex-col justify-between">
-                  <div className="text-xs font-bold text-slate-400 mb-2">Statistika</div>
+                <div className="md:col-span-4 bg-white border-2 border-emerald-200 rounded-2xl p-4 shadow-md flex flex-col justify-between">
+                  <div className="text-xs font-bold text-slate-500 mb-2">Bugungi Statistika</div>
                   <div className="grid grid-cols-2 gap-2 text-center text-xs">
-                    <div className="bg-[#0b1224] p-2 rounded-xl border border-slate-800">
-                      <div className="text-[10px] text-slate-400">Xizmat ko‘rsatildi:</div>
-                      <div className="text-base font-black text-white">{currentStaff.servedCountToday || 42} mijoz</div>
+                    <div className="bg-emerald-50/60 p-2 rounded-xl border border-emerald-200">
+                      <div className="text-[10px] text-slate-500">Xizmat ko‘rsatildi:</div>
+                      <div className="text-base font-black text-emerald-950">{currentStaff.servedCountToday || 24} mijoz</div>
                     </div>
-                    <div className="bg-[#0b1224] p-2 rounded-xl border border-slate-800">
-                      <div className="text-[10px] text-slate-400">O‘rtacha vaqt:</div>
-                      <div className="text-base font-black text-cyan-400">8:30 daqiqa</div>
+                    <div className="bg-emerald-50/60 p-2 rounded-xl border border-emerald-200">
+                      <div className="text-[10px] text-slate-500">O‘rtacha vaqt:</div>
+                      <div className="text-base font-black text-emerald-800">8 daqiqa</div>
                     </div>
-                    <div className="bg-[#0b1224] p-2 rounded-xl border border-slate-800">
-                      <div className="text-[10px] text-slate-400">Kutilmoqda:</div>
-                      <div className="text-base font-black text-amber-400">{staffWaitingQueue.length} mijoz</div>
+                    <div className="bg-emerald-50/60 p-2 rounded-xl border border-emerald-200">
+                      <div className="text-[10px] text-slate-500">Kutilmoqda:</div>
+                      <div className="text-base font-black text-amber-700">{staffWaitingQueue.length} mijoz</div>
                     </div>
-                    <div className="bg-[#0b1224] p-2 rounded-xl border border-slate-800">
-                      <div className="text-[10px] text-slate-400">Vaqt:</div>
-                      <div className="text-base font-black text-emerald-400">35 daqiqa</div>
+                    <div className="bg-emerald-50/60 p-2 rounded-xl border border-emerald-200">
+                      <div className="text-[10px] text-slate-500">Holat:</div>
+                      <div className="text-base font-black text-emerald-800">Faol</div>
                     </div>
                   </div>
                 </div>
@@ -704,12 +704,12 @@ export function StaffView() {
             </div>
 
             {/* Active Queue Table (4 cols) */}
-            <div className="lg:col-span-4 bg-[#111a33] border border-slate-800 rounded-3xl p-5 shadow-xl flex flex-col">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
-                <span className="font-extrabold text-white text-sm">Active Queue</span>
+            <div className="lg:col-span-4 bg-white border-2 border-emerald-200 rounded-3xl p-5 shadow-xl flex flex-col">
+              <div className="flex items-center justify-between border-b-2 border-emerald-100 pb-3 mb-3">
+                <span className="font-extrabold text-emerald-950 text-sm">Kutish Zali Navbati</span>
                 <button
                   onClick={() => setQueueExpanded(!queueExpanded)}
-                  className="text-slate-400 hover:text-white cursor-pointer"
+                  className="text-slate-400 hover:text-slate-700 cursor-pointer"
                 >
                   {queueExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
@@ -718,14 +718,14 @@ export function StaffView() {
               {queueExpanded && (
                 <div className="overflow-x-auto flex-1">
                   <table className="w-full text-left text-xs">
-                    <thead className="text-slate-400 border-b border-slate-800 text-[11px]">
+                    <thead className="text-slate-400 border-b border-emerald-100 text-[11px] uppercase">
                       <tr>
                         <th className="pb-2">Mijoz</th>
                         <th className="pb-2">Kutish vaqti</th>
                         <th className="pb-2 text-right">Xizmat</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/50 text-slate-300 font-sans">
+                    <tbody className="divide-y divide-emerald-100 text-slate-700 font-sans">
                       {staffWaitingQueue.slice(0, 8).map((t) => {
                         const srv = services.find((s) => s.id === t.serviceId);
                         const waitMinutes = Math.max(1, Math.round((Date.now() - t.createdAt) / 60000));

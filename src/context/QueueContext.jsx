@@ -358,27 +358,53 @@ export function QueueProvider({ children }) {
 
     const selectedTicket = eligibleTickets[0];
 
+    // Talab 3: Xodimlarga xizmatlar teng taqsimlansin, agar qaysidir o'zidan oldingidan 1ta ko'p olib qo'ygan bo'lsa keyingi aylanada galini o'tkazib yuborsin
+    const availablePeers = staffList.filter(
+      (s) =>
+        s.id !== operator.id &&
+        s.status === STAFF_STATUS.AVAILABLE &&
+        s.branchId === operator.branchId &&
+        (!s.authorizedServiceIds || s.authorizedServiceIds.length === 0 || s.authorizedServiceIds.includes(selectedTicket.serviceId))
+    );
+
+    let assignedOperator = operator;
+    let turnSkipped = false;
+
+    if (availablePeers.length > 0) {
+      const minPeerServed = Math.min(...availablePeers.map((p) => p.servedCountToday || 0));
+      // Agar ushbu operator bo'sh hamkasbidan 1 ta yoki undan ko'p mijoz olgan bo'lsa, navbat kam olgan hamkasbiga beriladi!
+      if ((operator.servedCountToday || 0) > minPeerServed) {
+        const leastLoaded = availablePeers.find((p) => (p.servedCountToday || 0) === minPeerServed);
+        if (leastLoaded) {
+          assignedOperator = leastLoaded;
+          turnSkipped = true;
+        }
+      }
+    }
+
     const updatedTickets = ticketList.map((t) => {
       if (t.id === selectedTicket.id) {
         return {
           ...t,
           status: TICKET_STATUS.CALLED,
           calledAt: Date.now(),
-          staffId: operator.id,
-          windowNumber: operator.windowNumber,
+          staffId: assignedOperator.id,
+          windowNumber: assignedOperator.windowNumber,
         };
       }
       return t;
     });
 
     const updatedStaff = staffList.map((s) => {
-      if (s.id === operator.id) {
+      if (s.id === assignedOperator.id) {
         return {
           ...s,
           status: STAFF_STATUS.BUSY,
           currentTicketId: selectedTicket.id,
           pauseReason: null,
-          servedCountToday: activeTicket ? (s.servedCountToday || 0) + 1 : (s.servedCountToday || 0),
+          servedCountToday: activeTicket && assignedOperator.id === operator.id
+            ? (s.servedCountToday || 0) + 1
+            : (s.servedCountToday || 0),
         };
       }
       return s;
@@ -389,15 +415,15 @@ export function QueueProvider({ children }) {
       ...selectedTicket,
       status: TICKET_STATUS.CALLED,
       calledAt: Date.now(),
-      staffId: operator.id,
-      windowNumber: operator.windowNumber,
+      staffId: assignedOperator.id,
+      windowNumber: assignedOperator.windowNumber,
       serviceName: serviceObj?.name || 'Xizmat',
     };
 
     const updatedLogs = addAuditLog(
       'TICKET_CALLED',
-      `${selectedTicket.ticketNumber} navbati ${operator.windowNumber}-oyna (${operator.name}) tomonidan qabul qilindi`,
-      operator.id,
+      `${selectedTicket.ticketNumber} navbati ${assignedOperator.windowNumber}-oyna (${assignedOperator.name}) tomonidan qabul qilindi${turnSkipped ? ' (Teng taqsimlash qoidasi bo‘yicha gal o‘tkazildi)' : ''}`,
+      assignedOperator.id,
       selectedTicket.ticketNumber
     );
 
@@ -409,14 +435,18 @@ export function QueueProvider({ children }) {
 
     if (audioEnabled) playChime();
     if (speechEnabled) {
-      announceTicket(selectedTicket.ticketNumber, operator.windowNumber);
+      announceTicket(selectedTicket.ticketNumber, assignedOperator.windowNumber);
     }
 
     return {
       success: true,
       ticket: calledDetails,
       previousCompleted: completedTicketNumber,
-      operator,
+      operator: assignedOperator,
+      turnSkipped,
+      message: turnSkipped
+        ? `Teng taqsimlash: Navbat kamroq mijoz olgan ${assignedOperator.name} (${assignedOperator.windowNumber}-oyna)ga berildi!`
+        : null,
     };
   };
 
@@ -751,6 +781,35 @@ export function QueueProvider({ children }) {
     setOperatorAlerts((prev) => [newAlert, ...(prev || [])]);
   };
 
+  const addStaff = (staffData) => {
+    const staffList = staff || INITIAL_STAFF;
+    const nextWin = staffData.windowNumber || `${staffList.length + 1}`;
+    const newStaffMember = {
+      id: `staff-${Date.now()}`,
+      name: staffData.name || 'Yangi Xodim',
+      login: staffData.login || `OP-${100 + staffList.length + 1}`,
+      windowNumber: nextWin,
+      branchId: staffData.branchId || activeBranchId || 'branch-1',
+      authorizedServiceIds: staffData.authorizedServiceIds || ['srv-general', 'srv-accounting'],
+      status: STAFF_STATUS.AVAILABLE,
+      currentTicketId: null,
+      pauseReason: null,
+      servedCountToday: 0,
+      noShowCountToday: 0,
+      lastServiceFinishedAt: null,
+      totalServiceMinutes: 0,
+    };
+    const updatedStaff = [...staffList, newStaffMember];
+    setStaff(updatedStaff);
+    broadcastState(tickets, updatedStaff);
+    addAuditLog(
+      'STAFF_ADDED',
+      `Yangi xodim qo‘shildi: ${newStaffMember.name} (${newStaffMember.windowNumber}-oyna)`,
+      newStaffMember.id
+    );
+    return { success: true, staff: newStaffMember };
+  };
+
   const resetToDemo = () => {
     setBranches(INITIAL_BRANCHES);
     setServices(INITIAL_SERVICES);
@@ -810,6 +869,7 @@ export function QueueProvider({ children }) {
         toggleDeviceStatus,
         addDevice,
         deleteDevice,
+        addStaff,
         toggleServiceActive,
         sendOperatorAlert,
         resetToDemo,

@@ -4,14 +4,13 @@ import {
   Smartphone,
   Briefcase,
   Monitor,
-  BarChart3,
+  Shield,
   Building2,
   Volume2,
   VolumeX,
   ExternalLink,
   Layers,
-  Shield,
-  TrendingUp,
+  Sparkles,
 } from 'lucide-react';
 
 export function Navbar({ currentView, setCurrentView }) {
@@ -30,11 +29,12 @@ export function Navbar({ currentView, setCurrentView }) {
     (t) => t.branchId === activeBranchId && t.status === 'WAITING'
   ).length;
 
+  // 4 ta alohida sahifa (Talab 1)
   const navItems = [
-    { id: 'staff', label: '1. Operator', icon: Briefcase, badge: waitingCount > 0 ? waitingCount : null },
-    { id: 'manager', label: '2. Menejer Tahlil', icon: TrendingUp, badge: null },
-    { id: 'admin', label: '3. Super Admin', icon: Shield, badge: null },
-    { id: 'display', label: '4. Katta Tablo (TV)', icon: Monitor, badge: null },
+    { id: 'kiosk', label: '1. Mijoz Kioski', icon: Smartphone, badge: null },
+    { id: 'staff', label: '2. Xodim (Operator)', icon: Briefcase, badge: waitingCount > 0 ? waitingCount : null },
+    { id: 'display', label: '3. Elektron Navbat (Monitor)', icon: Monitor, badge: null },
+    { id: 'admin', label: '4. Admin & Samaradorlik', icon: Shield, badge: null },
   ];
 
   const handleOpenNewWindow = () => {
@@ -42,28 +42,30 @@ export function Navbar({ currentView, setCurrentView }) {
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-[#091024]/90 backdrop-blur-xl border-b border-slate-800">
+    <header className="sticky top-0 z-40 bg-emerald-950/95 backdrop-blur-xl border-b-2 border-emerald-800 text-white shadow-lg">
       <div className="max-w-7xl mx-auto px-3 sm:px-6">
         <div className="flex items-center justify-between h-16 gap-3">
           
-          {/* Logo & Title */}
+          {/* Logo & Title - Oq va To'q Yashil */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/20 text-white font-black text-lg">
-              <Layers className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-2xl bg-white text-emerald-950 flex items-center justify-center shadow-md font-black text-lg">
+              <Layers className="w-5 h-5 text-emerald-900" />
             </div>
             <div className="hidden sm:block">
-              <div className="text-sm font-extrabold text-white tracking-tight flex items-center gap-1.5">
+              <div className="text-sm font-black text-white tracking-tight flex items-center gap-1.5">
                 <span>ELEKTRON NAVBAT</span>
-                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
-                  ENTERPRISE
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-800 text-emerald-200 border border-emerald-700">
+                  QMS PRO
                 </span>
               </div>
-              <div className="text-[11px] text-slate-400 font-medium">Boshqaruv Tizimi</div>
+              <div className="text-[10px] font-medium text-emerald-300">
+                Oq & To‘q Yashil Bank Tizimi
+              </div>
             </div>
           </div>
 
-          {/* Navigation Views Switcher */}
-          <nav className="flex items-center gap-1 bg-[#111a33] p-1 rounded-xl border border-slate-800 overflow-x-auto max-w-full">
+          {/* Navigation Items (4 ta alohida sahifa) */}
+          <nav className="flex items-center gap-1 sm:gap-2">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = currentView === item.id;
@@ -71,17 +73,16 @@ export function Navbar({ currentView, setCurrentView }) {
                 <button
                   key={item.id}
                   onClick={() => setCurrentView(item.id)}
-                  className={`relative flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer relative ${
                     isActive
-                      ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                      ? 'bg-emerald-800 text-white shadow-md border border-emerald-600 ring-2 ring-emerald-500/30'
+                      : 'text-emerald-200 hover:text-white hover:bg-emerald-900/60'
                   }`}
                 >
-                  <Icon className="w-3.5 h-3.5" />
+                  <Icon className="w-4 h-4 shrink-0 text-emerald-300" />
                   <span className="hidden md:inline">{item.label}</span>
-                  <span className="md:hidden">{item.label.split('.')[0]}</span>
                   {item.badge && (
-                    <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black">
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-black">
                       {item.badge}
                     </span>
                   )}
@@ -90,29 +91,19 @@ export function Navbar({ currentView, setCurrentView }) {
             })}
           </nav>
 
-          {/* Quick link back to Customer Kiosk Terminal */}
-          <button
-            onClick={() => setCurrentView('kiosk')}
-            title="Mijozlar terminaliga (Kiosk) o‘tish"
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
-          >
-            <Smartphone className="w-3.5 h-3.5" />
-            <span>Mijozlar Kioski (/)</span>
-          </button>
-
-          {/* Right Tools: Branch Selector & Audio Toggle */}
+          {/* Right Controls: Branch Selector & Audio */}
           <div className="flex items-center gap-2">
             
             {/* Branch Selector */}
-            <div className="hidden xl:flex items-center gap-1.5 bg-[#111a33] border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs">
-              <Building2 className="w-3.5 h-3.5 text-cyan-400" />
+            <div className="hidden lg:flex items-center gap-1.5 bg-emerald-900/90 border border-emerald-700/80 px-2.5 py-1.5 rounded-xl text-xs text-emerald-200">
+              <Building2 className="w-3.5 h-3.5 text-emerald-400" />
               <select
                 value={activeBranchId}
                 onChange={(e) => setActiveBranchId(e.target.value)}
-                className="bg-transparent text-slate-200 font-bold focus:outline-none cursor-pointer"
+                className="bg-transparent text-white font-semibold focus:outline-hidden cursor-pointer"
               >
                 {branches.map((b) => (
-                  <option key={b.id} value={b.id} className="bg-slate-900 text-white">
+                  <option key={b.id} value={b.id} className="bg-emerald-950 text-white">
                     {b.name}
                   </option>
                 ))}
@@ -125,24 +116,25 @@ export function Navbar({ currentView, setCurrentView }) {
                 setAudioEnabled(!audioEnabled);
                 setSpeechEnabled(!audioEnabled);
               }}
-              title={audioEnabled ? "Ovozli e'lonlar yoqilgan" : "Ovoz o'chirilgan"}
+              title={audioEnabled ? "Ovozni o'chirish" : "Ovozni yoqish"}
               className={`p-2 rounded-xl border transition-all cursor-pointer ${
                 audioEnabled
-                  ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20'
-                  : 'bg-slate-900 border-slate-800 text-slate-500'
+                  ? 'bg-emerald-800 border-emerald-600 text-emerald-200'
+                  : 'bg-emerald-950 border-emerald-800 text-emerald-400 opacity-60'
               }`}
             >
               {audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
 
-            {/* New Window Button (To simulate multi-screen setup) */}
+            {/* Open in New Window */}
             <button
               onClick={handleOpenNewWindow}
-              title="Yangi tabda ochish (Multi-ekran)"
-              className="hidden sm:flex items-center gap-1 p-2 rounded-xl bg-[#111a33] hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs transition-all cursor-pointer"
+              title="Yangi oynada ochish"
+              className="p-2 rounded-xl bg-emerald-900/80 hover:bg-emerald-800 border border-emerald-700 text-emerald-200 transition-all cursor-pointer hidden sm:block"
             >
               <ExternalLink className="w-4 h-4" />
             </button>
+
           </div>
 
         </div>
