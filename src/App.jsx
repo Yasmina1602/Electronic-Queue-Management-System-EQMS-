@@ -19,18 +19,27 @@ export const ROUTES = {
 function getViewFromLocation() {
   try {
     const path = window.location.pathname.toLowerCase().replace(/\/+$/, '');
+    const hash = window.location.hash.toLowerCase().replace(/^[#/]+/, '');
     const params = new URLSearchParams(window.location.search);
     const viewQuery = params.get('view')?.toLowerCase();
 
-    // Check query params
+    // Check query params (?view=display, ?view=staff, etc.)
     if (viewQuery) {
-      if (['staff', 'staff-portal-auth-88', 'operator'].includes(viewQuery)) return 'staff';
-      if (['admin', 'admin-control-secure', 'superadmin', 'manager'].includes(viewQuery)) return 'admin';
+      if (['staff', 'operator'].includes(viewQuery)) return 'staff';
+      if (['admin', 'manager'].includes(viewQuery)) return 'admin';
       if (['display', 'tv', 'tablo', 'monitor'].includes(viewQuery)) return 'display';
       if (['kiosk', 'mijoz', 'client'].includes(viewQuery)) return 'kiosk';
     }
 
-    // Check URL pathnames
+    // Check hash (#display, #staff, #admin, etc.)
+    if (hash) {
+      if (hash.includes('staff') || hash.includes('operator')) return 'staff';
+      if (hash.includes('display') || hash.includes('tablo') || hash.includes('monitor') || hash.includes('tv')) return 'display';
+      if (hash.includes('admin') || hash.includes('manager')) return 'admin';
+      if (hash.includes('kiosk') || hash.includes('mijoz')) return 'kiosk';
+    }
+
+    // Check URL pathnames (/display, /staff, /admin, etc.)
     if (path.includes('staff') || path.includes('operator')) return 'staff';
     if (path.includes('display') || path.includes('tablo') || path.includes('monitor') || path.includes('tv')) return 'display';
     if (path.includes('admin') || path.includes('manager')) return 'admin';
@@ -60,13 +69,17 @@ function MainApp() {
     } catch {}
   };
 
-  // Listen to browser Back/Forward navigation
+  // Listen to browser Back/Forward navigation and Hash changes
   useEffect(() => {
-    const handlePopState = () => {
+    const handleLocationChange = () => {
       setCurrentView(getViewFromLocation());
     };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    window.addEventListener('popstate', handleLocationChange);
+    window.addEventListener('hashchange', handleLocationChange);
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+      window.removeEventListener('hashchange', handleLocationChange);
+    };
   }, []);
 
   // Global F2 Hotkey: Qaysi sahifada bo'lishidan qat'i nazar keyingi mijozni chaqiradi
