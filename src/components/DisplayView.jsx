@@ -80,31 +80,68 @@ export function DisplayView({ onNavigate }) {
   // Branch staff windows
   const branchStaff = staff.filter((s) => s.branchId === activeBranchId);
 
-  // Helper to predict which window a waiting ticket will enter based on load leveling
-  const predictTargetWindow = (ticket) => {
-    const eligible = branchStaff.filter(
-      (s) =>
-        !s.authorizedServiceIds ||
-        s.authorizedServiceIds.length === 0 ||
-        s.authorizedServiceIds.includes(ticket.serviceId)
-    );
+  // Talab: Xodimlarga navbatma-navbat teng taqsimlash (barcha kutayotganlar faqat 1 ta xodimga tiqilib qolmasligi uchun)
+  const ticketPredictions = React.useMemo(() => {
+    if (!branchStaff || branchStaff.length === 0) return {};
 
-    if (eligible.length === 0) return { windowNumber: '1', staffName: 'Operator' };
+    // Xodimlarning joriy navbat yuklamasini kuzatuvchi obyektlar
+    const staffPool = branchStaff.map((s, idx) => ({
+      staffId: s.id,
+      windowNumber: s.windowNumber || `${idx + 1}`,
+      name: s.name,
+      status: s.status,
+      isAvailable: s.status === STAFF_STATUS.AVAILABLE,
+      assignedCount: 0,
+      servedTotal: s.servedCountToday || 0,
+      authorizedServiceIds: s.authorizedServiceIds || [],
+      index: idx,
+    }));
 
-    // Sort: AVAILABLE first, then fewest served tickets today
-    const sorted = [...eligible].sort((a, b) => {
-      if (a.status === STAFF_STATUS.AVAILABLE && b.status !== STAFF_STATUS.AVAILABLE) return -1;
-      if (b.status === STAFF_STATUS.AVAILABLE && a.status !== STAFF_STATUS.AVAILABLE) return 1;
-      return (a.servedCountToday || 0) - (b.servedCountToday || 0);
+    const predictionsMap = {};
+
+    waitingTickets.forEach((ticket) => {
+      // Ushbu chipta xizmatiga ruxsat berilgan xodimlar
+      let matchingStaff = staffPool.filter(
+        (sp) =>
+          !sp.authorizedServiceIds ||
+          sp.authorizedServiceIds.length === 0 ||
+          sp.authorizedServiceIds.includes(ticket.serviceId)
+      );
+
+      // Agar maxsus xodim bo'lmasa barcha xodimlar
+      if (matchingStaff.length === 0) {
+        matchingStaff = staffPool;
+      }
+
+      // Taqsimlash qoidasi:
+      // 1. Shu navbat aylanasida eng kam chipta biriktirilgan xodim (assignedCount)
+      // 2. Bo'sh turgan xodimlar (AVAILABLE) birinchi
+      // 3. Bugun kam xizmat ko'rsatgan xodim
+      matchingStaff.sort((a, b) => {
+        if (a.assignedCount !== b.assignedCount) {
+          return a.assignedCount - b.assignedCount;
+        }
+        if (a.isAvailable && !b.isAvailable) return -1;
+        if (!a.isAvailable && b.isAvailable) return 1;
+        if (a.servedTotal !== b.servedTotal) {
+          return a.servedTotal - b.servedTotal;
+        }
+        return a.index - b.index;
+      });
+
+      const selected = matchingStaff[0] || staffPool[0];
+      // Biriktiramiz va uning yuklamasini oshiramiz, shunda keyingi navbatdagi mijoz navbatdagi BOSHQA xodimga yo'naltiriladi!
+      selected.assignedCount += 1;
+
+      predictionsMap[ticket.id] = {
+        windowNumber: selected.windowNumber,
+        staffName: selected.name,
+        isAvailable: selected.isAvailable,
+      };
     });
 
-    const target = sorted[0];
-    return {
-      windowNumber: target.windowNumber || '1',
-      staffName: target.name,
-      isAvailable: target.status === STAFF_STATUS.AVAILABLE,
-    };
-  };
+    return predictionsMap;
+  }, [branchStaff, waitingTickets]);
 
   const toggleFullscreen = () => {
     try {
@@ -337,7 +374,7 @@ export function DisplayView({ onNavigate }) {
               ) : (
                 <div className="space-y-2.5 overflow-y-auto max-h-[380px] pr-1">
                   {waitingTickets.map((t, idx) => {
-                    const prediction = predictTargetWindow(t);
+                    const prediction = ticketPredictions[t.id] || { windowNumber: `${(idx % (branchStaff.length || 1)) + 1}`, staffName: branchStaff[idx % (branchStaff.length || 1)]?.name || 'Operator' };
                     return (
                       <div
                         key={t.id}
