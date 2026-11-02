@@ -188,17 +188,6 @@ export function DisplayView({ onNavigate }) {
 
         {/* Right: Audio, Test Chime & Fullscreen */}
         <div className="flex items-center gap-2">
-          {onNavigate && (
-            <button
-              onClick={() => onNavigate('staff')}
-              title="Xodimlar sahifasiga o'tish"
-              className="flex items-center gap-1 px-3 py-2 rounded-xl bg-emerald-800/80 hover:bg-emerald-800 text-emerald-100 text-xs font-bold transition-all cursor-pointer border border-emerald-700"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Operator</span>
-            </button>
-          )}
-
           {/* Test Chime */}
           <button
             onClick={handleTestChime}

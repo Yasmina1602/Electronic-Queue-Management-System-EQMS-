@@ -207,63 +207,15 @@ function MainApp() {
         </div>
       )}
 
-      {/* Sahifalar mustaqil: Header tiqilishi butunlay olib tashlandi (Talab 1 & 7) */}
+      {/* Sahifalar mustaqil: faqat URL manzil orqali kiriladi (Talab 1 & 3) */}
       <main className="flex-1">
         <ErrorBoundary>
-          {currentView === 'kiosk' && (
-            <KioskView />
-          )}
-          {currentView === 'staff' && (
-            <StaffView onNavigateHome={() => navigateTo('kiosk')} />
-          )}
-          {currentView === 'display' && <DisplayView onNavigate={navigateTo} />}
+          {currentView === 'kiosk' && <KioskView />}
+          {currentView === 'staff' && <StaffView />}
+          {currentView === 'display' && <DisplayView />}
           {currentView === 'admin' && <AdminDashboard />}
         </ErrorBoundary>
       </main>
-
-      {/* Discrete Floating Page Navigator (Header tiqilib ketmasligi uchun pastki burchakda ixcham tugma) */}
-      <div className="fixed bottom-3 right-3 z-50">
-        <details className="group relative">
-          <summary className="list-none flex items-center gap-1.5 px-3 py-1.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 text-[11px] font-bold rounded-full shadow-lg backdrop-blur-md border border-emerald-700/60 cursor-pointer transition-all">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>Sahifa: {currentView === 'kiosk' ? 'Mijoz Kioski' : currentView === 'staff' ? 'Xodim (Operator)' : currentView === 'display' ? 'Elektron Tablo' : 'Admin'}</span>
-          </summary>
-          <div className="absolute bottom-full right-0 mb-2 w-48 bg-white border-2 border-emerald-800 rounded-2xl shadow-2xl p-1.5 space-y-1 text-xs">
-            <button
-              onClick={() => navigateTo('kiosk')}
-              className={`w-full text-left px-3 py-2 rounded-xl font-bold transition-all cursor-pointer ${
-                currentView === 'kiosk' ? 'bg-emerald-800 text-white' : 'text-slate-800 hover:bg-emerald-50'
-              }`}
-            >
-              1. Mijoz Kioski (/)
-            </button>
-            <button
-              onClick={() => navigateTo('staff')}
-              className={`w-full text-left px-3 py-2 rounded-xl font-bold transition-all cursor-pointer ${
-                currentView === 'staff' ? 'bg-emerald-800 text-white' : 'text-slate-800 hover:bg-emerald-50'
-              }`}
-            >
-              2. Xodim Portali (/staff)
-            </button>
-            <button
-              onClick={() => navigateTo('display')}
-              className={`w-full text-left px-3 py-2 rounded-xl font-bold transition-all cursor-pointer ${
-                currentView === 'display' ? 'bg-emerald-800 text-white' : 'text-slate-800 hover:bg-emerald-50'
-              }`}
-            >
-              3. Elektron Tablo (/display)
-            </button>
-            <button
-              onClick={() => navigateTo('admin')}
-              className={`w-full text-left px-3 py-2 rounded-xl font-bold transition-all cursor-pointer ${
-                currentView === 'admin' ? 'bg-emerald-800 text-white' : 'text-slate-800 hover:bg-emerald-50'
-              }`}
-            >
-              4. Admin Boshqaruv (/admin)
-            </button>
-          </div>
-        </details>
-      </div>
     </div>
   );
 }

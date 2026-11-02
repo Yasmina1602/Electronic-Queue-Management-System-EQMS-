@@ -520,28 +520,6 @@ export function StaffView({ onNavigateHome }) {
             </form>
           )}
 
-          {/* Quick Staff Demo Pick */}
-          <div className="mt-5 pt-3 border-t border-slate-200 text-center">
-            <span className="text-[10px] text-slate-500 font-semibold">
-              Tezkor mavjud xodimlar:
-            </span>
-            <div className="flex flex-wrap justify-center gap-1.5 mt-2">
-              {staff.slice(0, 3).map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => {
-                    setLoginIdentifier(s.name);
-                    setLoginPassword(s.password || '123');
-                  }}
-                  className="text-[10px] px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold border border-emerald-200 cursor-pointer"
-                >
-                  {s.name} ({s.windowNumber}-oyna)
-                </button>
-              ))}
-            </div>
-          </div>
-
         </div>
       </div>
     );
