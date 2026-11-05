@@ -77,8 +77,12 @@ export function DisplayView({ onNavigate }) {
     })
     .slice(0, 8);
 
-  // Branch staff windows
-  const branchStaff = staff.filter((s) => s.branchId === activeBranchId);
+  // Branch staff windows (Talab: mijozlarga faqat xizmat ko'rsatuvchi operator xodimlar xizmat qiladi, admin va superadmin emas)
+  const branchStaff = staff.filter(
+    (s) =>
+      (s.branchId || s.branch_id || 'branch-1') === (activeBranchId || 'branch-1') &&
+      ((s.role_id || s.roleId || s.role) === 'OPERATOR')
+  );
 
   // Talab: Xodimlarga navbatma-navbat teng taqsimlash (barcha kutayotganlar faqat 1 ta xodimga tiqilib qolmasligi uchun)
   const ticketPredictions = React.useMemo(() => {
@@ -280,7 +284,7 @@ export function DisplayView({ onNavigate }) {
               <div className="flex items-center gap-2.5">
                 <span className="w-3.5 h-3.5 rounded-full bg-emerald-600 animate-ping"></span>
                 <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-emerald-900">
-                  MARHAMAT, XIZMAT KO‘RSATISH OYNASIGA YAQINLASHING
+                  MARHAMAT, XIZMAT KO‘RSATISH XODIMIGA YAQINLASHING
                 </span>
               </div>
               <div className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1.5">
@@ -310,16 +314,13 @@ export function DisplayView({ onNavigate }) {
                   )}
                 </div>
 
-                {/* Qabul Oynasi */}
+                {/* Qabul Qiluvchi Xodim */}
                 <div className="bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-950 border-2 border-emerald-700 text-white rounded-3xl p-5 sm:p-7 shadow-xl min-w-0">
                   <div className="text-xs uppercase tracking-widest text-emerald-200 font-extrabold mb-1">
-                    Qabul Oynasi
+                    Xodim
                   </div>
                   <div className="text-5xl sm:text-6xl md:text-7xl xl:text-8xl font-black text-amber-300 font-sans tracking-tight flex items-center justify-center gap-2.5 whitespace-nowrap py-3">
-                    <span>{spotlightTicket.windowNumber || '1'}</span>
-                    <span className="text-2xl sm:text-3xl text-emerald-100 font-extrabold uppercase">
-                      Oyna
-                    </span>
+                    <span>{spotlightTicket.windowNumber || '1'}-xodim</span>
                   </div>
                   <div className="text-sm font-bold text-emerald-200 mt-2 flex items-center justify-center gap-1.5">
                     <CheckCircle className="w-4 h-4 text-emerald-400" />
@@ -414,10 +415,10 @@ export function DisplayView({ onNavigate }) {
                         {/* QAYSIGA KIRISHI KERAKLIGI (Requirement 5) */}
                         <div className="text-right">
                           <div className="text-xs font-black text-emerald-900 bg-emerald-100/80 px-2.5 py-1 rounded-xl border border-emerald-300 flex items-center gap-1">
-                            <span>➔ {prediction.windowNumber}-Oynaga</span>
+                            <span>➔ {prediction.windowNumber}-xodimga</span>
                           </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5 font-medium truncate max-w-[110px]">
-                            {prediction.staffName}
+                          <div className="text-[10px] text-slate-500 mt-0.5 font-bold truncate max-w-[140px]">
+                            Xodim: {prediction.staffName}
                           </div>
                         </div>
                       </div>
@@ -445,11 +446,11 @@ export function DisplayView({ onNavigate }) {
                 <UserCheck className="w-4 h-4" />
               </div>
               <h3 className="text-sm font-black uppercase tracking-wider text-emerald-950">
-                BARCHA XIZMAT KO‘RSATISH OYNALARI VA OPERATORLAR
+                BARCHA XIZMAT KO‘RSATISH XODIMLARI
               </h3>
             </div>
             <span className="text-xs font-semibold text-emerald-800">
-              Jami faol: {branchStaff.length} ta oyna
+              Jami faol: {branchStaff.length} ta xodim
             </span>
           </div>
 
@@ -480,7 +481,7 @@ export function DisplayView({ onNavigate }) {
                   {/* Window number & status badge */}
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-black px-2.5 py-1 rounded-xl bg-emerald-900 text-white">
-                      {staffMember.windowNumber}-OYNA
+                      {staffMember.windowNumber}-XODIM
                     </span>
                     <span
                       className={`w-2.5 h-2.5 rounded-full ${
@@ -495,7 +496,7 @@ export function DisplayView({ onNavigate }) {
 
                   {/* Operator Name */}
                   <div className="text-xs font-bold text-emerald-950 truncate">
-                    {staffMember.name}
+                    Xodim: {staffMember.name}
                   </div>
 
                   {/* Current Client / Ticket */}

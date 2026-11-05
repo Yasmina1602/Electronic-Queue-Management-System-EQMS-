@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { io } from 'socket.io-client';
+import { api, SOCKET_URL } from '../utils/api';
 import {
   INITIAL_BRANCHES,
   INITIAL_SERVICES,
@@ -14,10 +16,9 @@ import { playChime, playPrintSound, announceTicket } from '../utils/audio';
 
 const QueueContext = createContext(null);
 
-const STORAGE_KEY = 'qms_storage_v5';
-const CHANNEL_NAME = 'qms_broadcast_v5';
+const STORAGE_KEY = 'qms_storage_v6';
+const CHANNEL_NAME = 'qms_broadcast_v6';
 
-// Safe array helper
 function getSafeArray(key, fallback) {
   try {
     const saved = localStorage.getItem(key);
@@ -29,75 +30,77 @@ function getSafeArray(key, fallback) {
   }
 }
 
+function normalizeStaff(s) {
+  if (!s) return s;
+  return {
+    ...s,
+    branchId: s.branch_id || s.branchId || 'branch-1',
+    roleId: s.role_id || s.roleId || 'OPERATOR',
+    windowNumber: s.window_number || s.windowNumber || '1',
+    servedCountToday: s.served_count_today ?? s.servedCountToday ?? 0,
+    noShowCountToday: s.no_show_count_today ?? s.noShowCountToday ?? 0,
+    totalServiceMinutes: s.total_service_minutes ?? s.totalServiceMinutes ?? 0,
+    currentTicketId: s.current_ticket_id || s.currentTicketId || null,
+    pauseReason: s.pause_reason || s.pauseReason || null,
+    authorizedServiceIds: (s.authorizedServiceIds || s.authorized_service_ids || ['srv-general', 'srv-accounting']).filter(Boolean),
+  };
+}
+
+function normalizeTicket(t) {
+  if (!t) return t;
+  return {
+    ...t,
+    ticketNumber: t.ticket_number || t.ticketNumber,
+    branchId: t.branch_id || t.branchId || 'branch-1',
+    serviceId: t.service_id || t.serviceId,
+    staffId: t.staff_id || t.staffId,
+    windowNumber: t.window_number || t.windowNumber,
+    clientName: t.client_name || t.clientName,
+    clientPhone: t.client_phone || t.clientPhone,
+    clientIdentifier: t.client_identifier || t.clientIdentifier || t.client_name || t.clientName || 'Mijoz',
+    createdAt: typeof t.createdAt === 'number' ? t.createdAt : (t.created_at ? new Date(t.created_at).getTime() : Date.now()),
+    calledAt: typeof t.calledAt === 'number' ? t.calledAt : (t.called_at ? new Date(t.called_at).getTime() : null),
+    startedAt: typeof t.startedAt === 'number' ? t.startedAt : (t.started_at ? new Date(t.started_at).getTime() : null),
+    completedAt: typeof t.completedAt === 'number' ? t.completedAt : (t.completed_at ? new Date(t.completed_at).getTime() : null),
+  };
+}
+
 export function QueueProvider({ children }) {
   const [branches, setBranches] = useState(() => getSafeArray(STORAGE_KEY + '_branches', INITIAL_BRANCHES));
-  const [services, setServices] = useState(() => {
-    const saved = getSafeArray(STORAGE_KEY + '_services', INITIAL_SERVICES);
-    const existingIds = new Set(saved.map((s) => s.id));
-    const missing = INITIAL_SERVICES.filter((s) => !existingIds.has(s.id));
-    if (missing.length > 0) {
-      return [...saved, ...missing];
-    }
-    return saved;
-  });
-  const [staff, setStaff] = useState(() => {
-    const saved = getSafeArray(STORAGE_KEY + '_staff', INITIAL_STAFF);
-    return saved.map((s) => {
-      const initialMatch = INITIAL_STAFF.find((is) => is.id === s.id);
-      if (initialMatch && initialMatch.authorizedServiceIds) {
-        const set = new Set([...(s.authorizedServiceIds || []), ...initialMatch.authorizedServiceIds]);
-        return { ...s, authorizedServiceIds: Array.from(set) };
-      }
-      return s;
-    });
-  });
-  const [tickets, setTickets] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY + '_tickets');
-      if (!saved) return INITIAL_TICKETS;
-      const parsed = JSON.parse(saved);
-      return Array.isArray(parsed) ? parsed : INITIAL_TICKETS;
-    } catch {
-      return INITIAL_TICKETS;
-    }
-  });
+  const [services, setServices] = useState(() => getSafeArray(STORAGE_KEY + '_services', INITIAL_SERVICES));
+  const [staff, setStaff] = useState(() => getSafeArray(STORAGE_KEY + '_staff', INITIAL_STAFF));
+  const [tickets, setTickets] = useState(() => getSafeArray(STORAGE_KEY + '_tickets', INITIAL_TICKETS));
   const [devices, setDevices] = useState(() => getSafeArray(STORAGE_KEY + '_devices', INITIAL_DEVICES));
   const [auditLogs, setAuditLogs] = useState(() => getSafeArray(STORAGE_KEY + '_audit', INITIAL_AUDIT_LOGS));
-
-  // Talab 7: Yangi xodimlardan kelgan arizalar (Adminga boradi)
-  const [staffRequests, setStaffRequests] = useState(() => getSafeArray(STORAGE_KEY + '_staff_requests', [
-    {
-      id: 'req-sample-1',
-      name: 'Sherzod Qodirov',
-      login: 'OP-106',
-      password: '123',
-      phone: '+998 90 987-65-43',
-      windowNumber: '6',
-      branchId: 'branch-1',
-      authorizedServiceIds: ['srv-general', 'srv-accounting'],
-      createdAt: Date.now() - 25 * 60 * 1000,
-      status: 'PENDING',
-    }
-  ]));
-
-  // Talab 6: Ro'yxatdan o'tgan mijozlar akkauntlari
-  const [registeredClients, setRegisteredClients] = useState(() => getSafeArray(STORAGE_KEY + '_clients', [
-    {
-      id: 'cli-1',
-      fullName: 'Otabek Mirzayev',
-      phone: '+998 90 123-45-67',
-      registeredAt: Date.now() - 3600000,
-    }
-  ]));
+  const [staffRequests, setStaffRequests] = useState(() => getSafeArray(STORAGE_KEY + '_staff_requests', []));
 
   const [activeBranchId, setActiveBranchId] = useState(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY + '_branchId');
-      return saved || 'branch-1';
+      localStorage.setItem(STORAGE_KEY + '_branchId', 'branch-1');
+      return 'branch-1';
     } catch {
       return 'branch-1';
     }
   });
+
+  // Current logged in user (Sinxron holat)
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const u = localStorage.getItem('qms_user');
+      return u ? JSON.parse(u) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const logoutUser = useCallback(() => {
+    localStorage.removeItem('qms_auth_token');
+    localStorage.removeItem('qms_user');
+    localStorage.removeItem('qms_admin_auth');
+    localStorage.removeItem('qms_staff_auth_id');
+    setCurrentUser(null);
+    window.location.href = '/login';
+  }, []);
 
   const [activeStaffId, setActiveStaffId] = useState(() => {
     return (INITIAL_STAFF[0] && INITIAL_STAFF[0].id) || 'staff-1';
@@ -107,8 +110,8 @@ export function QueueProvider({ children }) {
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [speechEnabled, setSpeechEnabled] = useState(true);
   const [centralQueueRouting, setCentralQueueRouting] = useState(true);
+  const [isBackendConnected, setIsBackendConnected] = useState(false);
 
-  // Operator alerts
   const [operatorAlerts, setOperatorAlerts] = useState([
     {
       id: 'alt-1',
@@ -116,17 +119,132 @@ export function QueueProvider({ children }) {
       message: 'Bugungi kunlik reja 150 mijoz. Iltimos, xizmat ko‘rsatish vaqtini 8 daqiqadan oshirmang.',
       time: '09:30',
     },
-    {
-      id: 'alt-2',
-      sender: 'Kassir guruhi',
-      message: 'Valyuta ayirboshlash bo‘yicha yangi kurslar tizimga yuklandi.',
-      time: '10:15',
-    },
   ]);
 
   const broadcastChannelRef = useRef(null);
+  const socketRef = useRef(null);
 
-  // Initialize BroadcastChannel for cross-tab sync
+  // Sync state from Backend PostgreSQL
+  const syncWithBackend = useCallback(async () => {
+    try {
+      const data = await api.getState(activeBranchId);
+      if (data && data.success) {
+        if (data.branches?.length) setBranches(data.branches);
+        if (data.services?.length) setServices(data.services);
+        if (data.staff?.length) setStaff(data.staff.map(normalizeStaff));
+        if (Array.isArray(data.tickets)) setTickets(data.tickets.map(normalizeTicket));
+        if (data.devices?.length) setDevices(data.devices);
+        if (data.auditLogs?.length) setAuditLogs(data.auditLogs);
+        setIsBackendConnected(true);
+      }
+    } catch (e) {
+      // Backend may be offline or starting, silent fallback to local storage
+      setIsBackendConnected(false);
+    }
+  }, [activeBranchId]);
+
+  // Initial fetch and on branch change
+  useEffect(() => {
+    syncWithBackend();
+    const timer = setInterval(syncWithBackend, 15000); // 15s polling fallback
+    return () => clearInterval(timer);
+  }, [syncWithBackend]);
+
+  // WebSocket Real-time listener
+  useEffect(() => {
+    let socket;
+    try {
+      socket = io(SOCKET_URL, {
+        transports: ['websocket', 'polling'],
+        reconnectionAttempts: 10,
+        reconnectionDelay: 2000,
+      });
+      socketRef.current = socket;
+
+      socket.on('connect', () => {
+        setIsBackendConnected(true);
+        socket.emit('join:branch', activeBranchId);
+      });
+
+      socket.on('disconnect', () => {
+        setIsBackendConnected(false);
+      });
+
+      socket.on('ticket:created', (data) => {
+        if (data?.ticket) {
+          setTickets((prev) => {
+            const exists = prev.some((t) => t.id === data.ticket.id);
+            return exists ? prev : [data.ticket, ...prev];
+          });
+        }
+      });
+
+      socket.on('ticket:called', (data) => {
+        const calledTicket = normalizeTicket(data?.ticket);
+        if (calledTicket) {
+          setLastCalledTicket(calledTicket);
+          setTickets((prev) =>
+            prev.map((t) => (t.id === calledTicket.id ? { ...t, ...calledTicket } : t))
+          );
+          if (data.operator) {
+            setStaff((prev) =>
+              prev.map((s) =>
+                s.id === data.operator.id
+                  ? { ...s, status: STAFF_STATUS.BUSY, currentTicketId: calledTicket.id }
+                  : s
+              )
+            );
+          }
+          if (audioEnabled) playChime();
+        }
+      });
+
+      socket.on('ticket:updated', (data) => {
+        setTickets((prev) =>
+          prev.map((t) => (t.id === data.queueId ? { ...t, status: data.status } : t))
+        );
+      });
+
+      socket.on('ticket:completed', (data) => {
+        setTickets((prev) =>
+          prev.map((t) =>
+            t.id === data.queueId ? { ...t, status: TICKET_STATUS.COMPLETED, completedAt: Date.now() } : t
+          )
+        );
+        syncWithBackend();
+      });
+
+      socket.on('staff:status_changed', (data) => {
+        setStaff((prev) =>
+          prev.map((s) => (s.id === data.staffId ? { ...s, status: data.status, pauseReason: data.pauseReason } : s))
+        );
+      });
+
+      socket.on('ticket:recalled', (data) => {
+        if (data?.ticket) {
+          setLastCalledTicket(data.ticket);
+          if (audioEnabled) playChime();
+          if (speechEnabled) {
+            announceTicket(data.ticket.ticket_number || data.ticket.ticketNumber, data.windowNumber);
+          }
+        }
+      });
+
+      socket.on('state:reset', () => syncWithBackend());
+      socket.on('queue:cleared', () => syncWithBackend());
+      socket.on('service:updated', () => syncWithBackend());
+    } catch (e) {
+      console.warn('Socket connection error:', e);
+    }
+
+    return () => {
+      if (socket) {
+        socket.disconnect();
+      }
+    };
+  }, [activeBranchId, audioEnabled, speechEnabled, syncWithBackend]);
+
+  // BroadcastChannel for cross-tab local sync
   useEffect(() => {
     if ('BroadcastChannel' in window) {
       const channel = new BroadcastChannel(CHANNEL_NAME);
@@ -137,15 +255,14 @@ export function QueueProvider({ children }) {
         if (type === 'STATE_SYNC' && payload) {
           if (Array.isArray(payload.tickets)) setTickets(payload.tickets);
           if (Array.isArray(payload.staff)) setStaff(payload.staff);
-          if (Array.isArray(payload.services)) setServices(payload.services);
-          if (Array.isArray(payload.branches)) setBranches(payload.branches);
-          if (Array.isArray(payload.devices)) setDevices(payload.devices);
-          if (Array.isArray(payload.auditLogs)) setAuditLogs(payload.auditLogs);
           if (payload.lastCalledTicket) {
             setLastCalledTicket(payload.lastCalledTicket);
             if (audioEnabled) playChime();
             if (speechEnabled) {
-              announceTicket(payload.lastCalledTicket.ticketNumber, payload.lastCalledTicket.windowNumber);
+              announceTicket(
+                payload.lastCalledTicket.ticketNumber || payload.lastCalledTicket.ticket_number,
+                payload.lastCalledTicket.windowNumber || payload.lastCalledTicket.window_number
+              );
             }
           }
         }
@@ -157,7 +274,7 @@ export function QueueProvider({ children }) {
     }
   }, [audioEnabled, speechEnabled]);
 
-  // Persist state
+  // Persist local backup
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY + '_branches', JSON.stringify(branches));
@@ -166,13 +283,9 @@ export function QueueProvider({ children }) {
       localStorage.setItem(STORAGE_KEY + '_tickets', JSON.stringify(tickets));
       localStorage.setItem(STORAGE_KEY + '_devices', JSON.stringify(devices));
       localStorage.setItem(STORAGE_KEY + '_audit', JSON.stringify(auditLogs));
-      localStorage.setItem(STORAGE_KEY + '_staff_requests', JSON.stringify(staffRequests));
-      localStorage.setItem(STORAGE_KEY + '_clients', JSON.stringify(registeredClients));
       localStorage.setItem(STORAGE_KEY + '_branchId', activeBranchId);
-    } catch (e) {
-      console.warn('Storage save error:', e);
-    }
-  }, [branches, services, staff, tickets, devices, auditLogs, staffRequests, registeredClients, activeBranchId]);
+    } catch (e) {}
+  }, [branches, services, staff, tickets, devices, auditLogs, activeBranchId]);
 
   const addAuditLog = (action, details, operatorId = null, ticketNumber = null) => {
     const newLog = {
@@ -183,803 +296,394 @@ export function QueueProvider({ children }) {
       operatorId,
       ticketNumber,
     };
-    const updated = [newLog, ...(auditLogs || [])].slice(0, 100);
-    setAuditLogs(updated);
-    return updated;
+    setAuditLogs((prev) => [newLog, ...(prev || [])].slice(0, 100));
+    return newLog;
   };
 
-  const broadcastState = (updatedTickets, updatedStaff, extraEvent = null, extraAudit = null) => {
-    if (broadcastChannelRef.current) {
-      broadcastChannelRef.current.postMessage({
-        type: 'STATE_SYNC',
-        payload: {
-          tickets: updatedTickets,
-          staff: updatedStaff,
-          branches,
-          services,
-          devices,
-          auditLogs: extraAudit || auditLogs,
-          lastCalledTicket: extraEvent,
-        },
+  /**
+   * KIOSK: Create ticket without any personal data (Section 2 & 10)
+   * Supports anonymous customer code and referral code
+   */
+  const createTicket = async (serviceId, isVip = false, anonymousCode = null, referralCode = null) => {
+    try {
+      const backendRes = await api.createTicket({
+        branchId: activeBranchId,
+        serviceId,
+        isVip,
+        anonymousCode,
+        referralCode,
       });
-    }
-  };
 
-  /**
-   * Talab 6: Register or update client account
-   */
-  const registerClient = (fullName, phone) => {
-    if (!fullName || !phone) return null;
-    const existing = registeredClients.find((c) => c.phone === phone);
-    if (existing) {
-      const updated = registeredClients.map((c) =>
-        c.phone === phone ? { ...c, fullName } : c
-      );
-      setRegisteredClients(updated);
-      return { ...existing, fullName };
-    }
-    const newClient = {
-      id: `cli-${Date.now()}`,
-      fullName,
-      phone,
-      registeredAt: Date.now(),
-    };
-    setRegisteredClients([newClient, ...registeredClients]);
-    return newClient;
-  };
+      if (backendRes && backendRes.ticket) {
+        const formattedTicket = {
+          id: backendRes.ticket.id,
+          ticketNumber: backendRes.ticket.ticket_number || backendRes.ticket.ticketNumber,
+          serviceId: backendRes.ticket.service_id || serviceId,
+          branchId: backendRes.ticket.branch_id || activeBranchId,
+          status: backendRes.ticket.status,
+          priority: backendRes.ticket.priority,
+          customerCode: backendRes.ticket.customerCode,
+          referralCode: backendRes.ticket.referralCode,
+          createdAt: Date.now(),
+        };
 
-  /**
-   * KIOSK: Create ticket with Client Name and Phone (Talab 6)
-   */
-  const createTicket = (serviceId, isVip = false, clientName = null, clientPhone = null) => {
-    const branchList = branches || INITIAL_BRANCHES;
-    const serviceList = services || INITIAL_SERVICES;
-    const ticketList = tickets || [];
+        setTickets((prev) => [formattedTicket, ...prev]);
+        if (audioEnabled) playPrintSound();
 
-    const branch = branchList.find((b) => b.id === activeBranchId) || branchList[0];
-    const service = serviceList.find((s) => s.id === serviceId && s.active);
-
-    if (!branch) {
-      return { success: false, error: 'Filial topilmadi!' };
-    }
-    if (!service) {
-      return { success: false, error: 'Xizmat turi topilmadi yoki to‘xtatilgan!' };
+        return {
+          success: true,
+          ticket: formattedTicket,
+          service: backendRes.service,
+          branch: backendRes.branch,
+          waitingAhead: backendRes.waitingAhead,
+          estWaitTimeMin: backendRes.estWaitTimeMin,
+        };
+      }
+    } catch (err) {
+      console.warn('Backend createTicket fallback:', err);
     }
 
-    const prefix = service.prefix || 'A';
-    const existingWithPrefix = ticketList.filter(
-      (t) => t.branchId === activeBranchId && t.ticketNumber && t.ticketNumber.startsWith(`${prefix}-`)
-    );
-    const nextSeqNum = 101 + existingWithPrefix.length;
+    // Local fallback
+    const branch = branches.find((b) => b.id === activeBranchId) || branches[0];
+    const service = services.find((s) => s.id === serviceId && s.active) || services[0];
+    const prefix = service?.prefix || 'A';
+    const nextSeqNum = 1 + tickets.filter((t) => t.ticketNumber?.startsWith(`${prefix}-`)).length;
     const ticketNumber = `${prefix}-${nextSeqNum}`;
 
-    const waitingAhead = ticketList.filter(
-      (t) => t.branchId === activeBranchId && t.serviceId === serviceId && t.status === TICKET_STATUS.WAITING
-    ).length;
-
-    const estWaitTimeMin = Math.max(2, waitingAhead * (service.avgDurationMin || 7));
-
     const newTicket = {
-      id: `tick-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id: `tick-${Date.now()}`,
       ticketNumber,
       serviceId,
       branchId: activeBranchId,
       status: TICKET_STATUS.WAITING,
       priority: isVip ? TICKET_PRIORITY.VIP : TICKET_PRIORITY.REGULAR,
-      clientIdentifier: clientName || (isVip ? `VIP Sodiqlik #${nextSeqNum}` : `Mijoz #${nextSeqNum}`),
-      clientPhone: clientPhone || null,
+      clientIdentifier: `Mijoz #${nextSeqNum}`,
       createdAt: Date.now(),
-      calledAt: null,
-      startedAt: null,
-      completedAt: null,
-      staffId: null,
-      windowNumber: null,
     };
 
-    const updatedTickets = [...ticketList, newTicket];
-    const updatedLogs = addAuditLog(
-      'TICKET_CREATED',
-      `${newTicket.ticketNumber} navbati yaratildi (${service.name}) - ${newTicket.clientIdentifier}`,
-      null,
-      newTicket.ticketNumber
-    );
-
-    setTickets(updatedTickets);
-    broadcastState(updatedTickets, staff, null, updatedLogs);
-
-    if (audioEnabled) {
-      playPrintSound();
-    }
+    setTickets((prev) => [newTicket, ...prev]);
+    if (audioEnabled) playPrintSound();
 
     return {
       success: true,
       ticket: newTicket,
       service,
       branch,
-      waitingAhead,
-      estWaitTimeMin,
+      waitingAhead: tickets.filter((t) => t.status === TICKET_STATUS.WAITING).length,
+      estWaitTimeMin: 8,
     };
   };
 
   /**
-   * Next customer call with FIFO, load-balancing, and atomic protection
+   * Operator calls next customer (FIFO + concurrency safe)
    */
-  const callNextCustomer = (staffId, autoAdvance = false) => {
-    let staffList = staff || INITIAL_STAFF;
-    let ticketList = tickets || [];
+  const callNextCustomer = async (staffId, autoAdvance = false) => {
+    try {
+      const res = await api.callNext({ staffId, autoAdvance, branchId: activeBranchId });
+      if (res.success && res.ticket) {
+        const normalized = normalizeTicket(res.ticket);
 
-    const operator = staffList.find((s) => s.id === staffId) || staffList[0];
-    if (!operator) return { success: false, error: 'Xodim topilmadi!' };
+        setLastCalledTicket(normalized);
 
-    // Auto-unpause if paused and autoAdvance is requested
-    let isPaused = operator.status === STAFF_STATUS.PAUSED;
+        // Optimistically update tickets in state immediately
+        setTickets((prev) => {
+          const updated = prev.map((t) => {
+            if (t.id === normalized.id) return { ...t, ...normalized, status: TICKET_STATUS.CALLED, staffId };
+            if (t.staffId === staffId && (t.status === TICKET_STATUS.CALLED || t.status === TICKET_STATUS.IN_SERVICE)) {
+              return { ...t, status: TICKET_STATUS.COMPLETED, completedAt: Date.now() };
+            }
+            return t;
+          });
+          if (!updated.some((t) => t.id === normalized.id)) {
+            updated.unshift(normalized);
+          }
+          return updated;
+        });
 
-    // Check if operator already has an active ticket
-    const activeTicket = ticketList.find(
-      (t) =>
-        t.id === operator.currentTicketId ||
-        (t.staffId === operator.id && (t.status === TICKET_STATUS.CALLED || t.status === TICKET_STATUS.IN_SERVICE))
-    );
-
-    let completedTicketNumber = null;
-    if (activeTicket) {
-      if (autoAdvance) {
-        // Complete current active ticket automatically to advance to the next
-        const durationMin = activeTicket.startedAt
-          ? Math.max(1, Math.round((Date.now() - activeTicket.startedAt) / 60000))
-          : 5;
-        completedTicketNumber = activeTicket.ticketNumber;
-        ticketList = ticketList.map((t) =>
-          t.id === activeTicket.id
-            ? { ...t, status: TICKET_STATUS.COMPLETED, completedAt: Date.now() }
-            : t
+        // Optimistically update staff state
+        setStaff((prev) =>
+          prev.map((s) =>
+            s.id === staffId ? { ...s, status: STAFF_STATUS.BUSY, currentTicketId: normalized.id } : s
+          )
         );
-        addAuditLog(
-          'TICKET_COMPLETED',
-          `${activeTicket.ticketNumber} xizmati yakunlandi (avtomatik keyingisiga o‘tildi)`,
-          operator.id,
-          activeTicket.ticketNumber
-        );
-      } else {
-        return {
-          success: false,
-          error: `Avval joriy mijoz (${activeTicket.ticketNumber}) xizmatini yakunlang!`,
-        };
-      }
-    } else if (operator.status !== STAFF_STATUS.AVAILABLE && !autoAdvance) {
-      return {
-        success: false,
-        error: `Mijoz chaqirish uchun xodim "AVAILABLE" (Bo‘sh) holatida bo‘lishi kerak. Joriy holat: ${operator.status}`,
-      };
-    }
 
-    // Find eligible tickets for this operator
-    let eligibleTickets = ticketList.filter(
-      (t) =>
-        t.status === TICKET_STATUS.WAITING &&
-        t.branchId === operator.branchId &&
-        (!operator.authorizedServiceIds ||
-          operator.authorizedServiceIds.length === 0 ||
-          operator.authorizedServiceIds.includes(t.serviceId))
-    );
+        syncWithBackend();
 
-    // Fallback: if no service-specific ticket, pick any waiting ticket in this branch
-    if (eligibleTickets.length === 0) {
-      eligibleTickets = ticketList.filter(
-        (t) => t.status === TICKET_STATUS.WAITING && t.branchId === operator.branchId
-      );
-    }
+        // 1 marta ding-dong musiqa
+        if (audioEnabled) playChime();
 
-    if (eligibleTickets.length === 0) {
-      // If we finished an active ticket above, make sure the completed state is saved
-      if (activeTicket && autoAdvance) {
-        const updatedStaff = staffList.map((s) =>
-          s.id === operator.id
-            ? {
-                ...s,
-                status: STAFF_STATUS.AVAILABLE,
-                currentTicketId: null,
-                servedCountToday: (s.servedCountToday || 0) + 1,
-                lastServiceFinishedAt: Date.now(),
-              }
-            : s
-        );
-        setTickets(ticketList);
-        setStaff(updatedStaff);
-        broadcastState(ticketList, updatedStaff);
         return {
           success: true,
-          previousCompleted: completedTicketNumber,
-          empty: true,
-          message: `${completedTicketNumber} yakunlandi. Navbatda boshqa mijoz yo‘q.`,
+          ticket: normalized,
+          operator: res.operator,
+          previousCompleted: res.previousCompleted,
+          message: res.message,
         };
+      } else if (res.empty) {
+        return { success: false, empty: true, message: res.message || 'Kutayotgan navbatlar yo‘q.' };
       }
-      return {
-        success: false,
-        empty: true,
-        message: 'Hozirda kutayotgan navbatlar yo‘q.',
-      };
+      return { success: false, error: res?.error || res?.message || 'Navbat chaqirib bo‘lmadi' };
+    } catch (err) {
+      console.warn('Backend callNext fallback error:', err.message);
+      return { success: false, error: err.message };
     }
-
-    // Sort: VIP first, then FIFO by createdAt
-    eligibleTickets.sort((a, b) => {
-      if (a.priority === TICKET_PRIORITY.VIP && b.priority !== TICKET_PRIORITY.VIP) return -1;
-      if (b.priority === TICKET_PRIORITY.VIP && a.priority !== TICKET_PRIORITY.VIP) return 1;
-      return a.createdAt - b.createdAt;
-    });
-
-    const selectedTicket = eligibleTickets[0];
-
-    // Talab 3: Xodimlarga xizmatlar teng taqsimlansin, agar qaysidir o'zidan oldingidan 1ta ko'p olib qo'ygan bo'lsa keyingi aylanada galini o'tkazib yuborsin
-    const availablePeers = staffList.filter(
-      (s) =>
-        s.id !== operator.id &&
-        s.status === STAFF_STATUS.AVAILABLE &&
-        s.branchId === operator.branchId &&
-        (!s.authorizedServiceIds || s.authorizedServiceIds.length === 0 || s.authorizedServiceIds.includes(selectedTicket.serviceId))
-    );
-
-    let assignedOperator = operator;
-    let turnSkipped = false;
-
-    if (availablePeers.length > 0) {
-      const minPeerServed = Math.min(...availablePeers.map((p) => p.servedCountToday || 0));
-      // Agar ushbu operator bo'sh hamkasbidan 1 ta yoki undan ko'p mijoz olgan bo'lsa, navbat kam olgan hamkasbiga beriladi!
-      if ((operator.servedCountToday || 0) > minPeerServed) {
-        const leastLoaded = availablePeers.find((p) => (p.servedCountToday || 0) === minPeerServed);
-        if (leastLoaded) {
-          assignedOperator = leastLoaded;
-          turnSkipped = true;
-        }
-      }
-    }
-
-    const updatedTickets = ticketList.map((t) => {
-      if (t.id === selectedTicket.id) {
-        return {
-          ...t,
-          status: TICKET_STATUS.CALLED,
-          calledAt: Date.now(),
-          staffId: assignedOperator.id,
-          windowNumber: assignedOperator.windowNumber,
-        };
-      }
-      return t;
-    });
-
-    const updatedStaff = staffList.map((s) => {
-      if (s.id === assignedOperator.id) {
-        return {
-          ...s,
-          status: STAFF_STATUS.BUSY,
-          currentTicketId: selectedTicket.id,
-          pauseReason: null,
-          servedCountToday: activeTicket && assignedOperator.id === operator.id
-            ? (s.servedCountToday || 0) + 1
-            : (s.servedCountToday || 0),
-        };
-      }
-      return s;
-    });
-
-    const serviceObj = (services || []).find((srv) => srv.id === selectedTicket.serviceId);
-    const calledDetails = {
-      ...selectedTicket,
-      status: TICKET_STATUS.CALLED,
-      calledAt: Date.now(),
-      staffId: assignedOperator.id,
-      windowNumber: assignedOperator.windowNumber,
-      serviceName: serviceObj?.name || 'Xizmat',
-    };
-
-    const updatedLogs = addAuditLog(
-      'TICKET_CALLED',
-      `${selectedTicket.ticketNumber} navbati ${assignedOperator.windowNumber}-oyna (${assignedOperator.name}) tomonidan qabul qilindi${turnSkipped ? ' (Teng taqsimlash qoidasi bo‘yicha gal o‘tkazildi)' : ''}`,
-      assignedOperator.id,
-      selectedTicket.ticketNumber
-    );
-
-    setTickets(updatedTickets);
-    setStaff(updatedStaff);
-    setLastCalledTicket(calledDetails);
-
-    broadcastState(updatedTickets, updatedStaff, calledDetails, updatedLogs);
-
-    if (audioEnabled) playChime();
-    if (speechEnabled) {
-      announceTicket(selectedTicket.ticketNumber, assignedOperator.windowNumber);
-    }
-
-    return {
-      success: true,
-      ticket: calledDetails,
-      previousCompleted: completedTicketNumber,
-      operator: assignedOperator,
-      turnSkipped,
-      message: turnSkipped
-        ? `Teng taqsimlash: Navbat kamroq mijoz olgan ${assignedOperator.name} (${assignedOperator.windowNumber}-oyna)ga berildi!`
-        : null,
-    };
   };
 
   /**
-   * Re-call customer
+   * Recall customer
    */
-  const recallCustomer = (ticketId) => {
-    const ticketList = tickets || [];
-    const ticket = ticketList.find((t) => t.id === ticketId);
-    if (!ticket) return;
-
-    const op = (staff || []).find((s) => s.id === ticket.staffId);
-    const serviceName = (services || []).find((s) => s.id === ticket.serviceId)?.name || 'Xizmat';
-
-    const calledDetails = {
-      ...ticket,
-      serviceName,
-      windowNumber: op?.windowNumber || ticket.windowNumber || '1',
-      calledAt: Date.now(),
-    };
-
-    addAuditLog(
-      'TICKET_RECALLED',
-      `${ticket.ticketNumber} navbati qayta chaqirildi (${op?.name || 'Oyna ' + ticket.windowNumber})`,
-      op?.id,
-      ticket.ticketNumber
-    );
-
-    setLastCalledTicket(calledDetails);
-    broadcastState(ticketList, staff, calledDetails);
-
-    if (audioEnabled) playChime();
-    if (speechEnabled) {
-      announceTicket(ticket.ticketNumber, calledDetails.windowNumber);
+  const recallCustomer = async (ticketId) => {
+    try {
+      await api.recallCustomer(ticketId, activeStaffId);
+    } catch (e) {
+      console.warn('Backend recallCustomer error:', e);
     }
   };
 
   /**
    * Start Service
    */
-  const startService = (ticketId) => {
-    const ticketList = tickets || [];
-    const updatedTickets = ticketList.map((t) => {
-      if (t.id === ticketId) {
-        return {
-          ...t,
-          status: TICKET_STATUS.IN_SERVICE,
-          startedAt: Date.now(),
-        };
-      }
-      return t;
-    });
-
-    const ticket = ticketList.find((t) => t.id === ticketId);
-    if (ticket) {
-      addAuditLog(
-        'SERVICE_STARTED',
-        `${ticket.ticketNumber} xizmat ko‘rsatish jarayoni boshlandi`,
-        ticket.staffId,
-        ticket.ticketNumber
+  const startService = async (ticketId) => {
+    try {
+      await api.startService(ticketId, activeStaffId);
+      setTickets((prev) =>
+        prev.map((t) => (t.id === ticketId ? { ...t, status: TICKET_STATUS.IN_SERVICE, startedAt: Date.now() } : t))
       );
+    } catch (e) {
+      console.warn('Backend startService error:', e);
     }
-
-    setTickets(updatedTickets);
-    broadcastState(updatedTickets, staff);
   };
 
   /**
    * Complete Service
    */
-  const completeService = (ticketId) => {
-    const ticketList = tickets || [];
-    const staffList = staff || [];
-
-    const ticket = ticketList.find((t) => t.id === ticketId);
-    if (!ticket) return;
-
-    const durationMin = ticket.startedAt
-      ? Math.max(1, Math.round((Date.now() - ticket.startedAt) / 60000))
-      : 5;
-
-    const updatedTickets = ticketList.map((t) => {
-      if (t.id === ticketId) {
-        return {
-          ...t,
-          status: TICKET_STATUS.COMPLETED,
-          completedAt: Date.now(),
-        };
-      }
-      return t;
-    });
-
-    const updatedStaff = staffList.map((s) => {
-      if (s.id === ticket.staffId || s.currentTicketId === ticketId) {
-        return {
-          ...s,
-          status: STAFF_STATUS.AVAILABLE,
-          currentTicketId: null,
-          servedCountToday: (s.servedCountToday || 0) + 1,
-          lastServiceFinishedAt: Date.now(),
-          totalServiceMinutes: (s.totalServiceMinutes || 0) + durationMin,
-        };
-      }
-      return s;
-    });
-
-    const updatedLogs = addAuditLog(
-      'TICKET_COMPLETED',
-      `${ticket.ticketNumber} xizmati muvaffaqiyatli yakunlandi (${durationMin} daqiqa)`,
-      ticket.staffId,
-      ticket.ticketNumber
-    );
-
-    setTickets(updatedTickets);
-    setStaff(updatedStaff);
-    broadcastState(updatedTickets, updatedStaff, null, updatedLogs);
+  const completeService = async (ticketId) => {
+    try {
+      await api.completeService(ticketId, activeStaffId);
+      setTickets((prev) =>
+        prev.map((t) => (t.id === ticketId ? { ...t, status: TICKET_STATUS.COMPLETED, completedAt: Date.now() } : t))
+      );
+      setStaff((prev) =>
+        prev.map((s) => (s.id === activeStaffId ? { ...s, status: STAFF_STATUS.AVAILABLE, currentTicketId: null } : s))
+      );
+      syncWithBackend();
+    } catch (e) {
+      console.warn('Backend completeService error:', e);
+    }
   };
 
   /**
    * Mark customer as NO_SHOW
    */
-  const markNoShow = (ticketId) => {
-    const ticketList = tickets || [];
-    const staffList = staff || [];
-
-    const ticket = ticketList.find((t) => t.id === ticketId);
-    if (!ticket) return;
-
-    const updatedTickets = ticketList.map((t) => {
-      if (t.id === ticketId) {
-        return {
-          ...t,
-          status: TICKET_STATUS.NO_SHOW,
-          completedAt: Date.now(),
-        };
-      }
-      return t;
-    });
-
-    let isUnderSupervision = false;
-    const updatedStaff = staffList.map((s) => {
-      if (s.id === ticket.staffId || s.currentTicketId === ticketId) {
-        const newNoShowCount = (s.noShowCountToday || 0) + 1;
-        if (newNoShowCount >= 3) {
-          isUnderSupervision = true;
-        }
-        return {
-          ...s,
-          status: STAFF_STATUS.AVAILABLE,
-          currentTicketId: null,
-          noShowCountToday: newNoShowCount,
-          lastServiceFinishedAt: Date.now(),
-        };
-      }
-      return s;
-    });
-
-    const logMsg = isUnderSupervision
-      ? `DIQQAT! ${ticket.ticketNumber} kelmadi deb belgilandi. Xodim me’yordan ko‘p mijoz qaytarganligi sababli NAZORATGA OLINDI!`
-      : `${ticket.ticketNumber} mijoz chaqiruvga kelmadi (NO_SHOW)`;
-
-    const updatedLogs = addAuditLog('NO_SHOW_MARKED', logMsg, ticket.staffId, ticket.ticketNumber);
-
-    setTickets(updatedTickets);
-    setStaff(updatedStaff);
-    broadcastState(updatedTickets, updatedStaff, null, updatedLogs);
-
-    return { success: true, isUnderSupervision };
+  const markNoShow = async (ticketId) => {
+    try {
+      await api.markNoShow(ticketId, activeStaffId);
+      setTickets((prev) =>
+        prev.map((t) => (t.id === ticketId ? { ...t, status: TICKET_STATUS.NO_SHOW, completedAt: Date.now() } : t))
+      );
+      setStaff((prev) =>
+        prev.map((s) => (s.id === activeStaffId ? { ...s, status: STAFF_STATUS.AVAILABLE, currentTicketId: null } : s))
+      );
+      syncWithBackend();
+      return { success: true };
+    } catch (e) {
+      console.warn('Backend markNoShow error:', e);
+      return { success: false, error: e.message };
+    }
   };
 
   /**
    * Transfer Ticket
    */
-  const transferTicket = (ticketId, targetServiceId) => {
-    const ticketList = tickets || [];
-    const serviceList = services || [];
-    const staffList = staff || [];
-
-    const ticket = ticketList.find((t) => t.id === ticketId);
-    if (!ticket) return;
-
-    const targetService = serviceList.find((s) => s.id === targetServiceId);
-    if (!targetService) return;
-
-    const updatedTickets = ticketList.map((t) => {
-      if (t.id === ticketId) {
-        return {
-          ...t,
-          serviceId: targetServiceId,
-          status: TICKET_STATUS.WAITING,
-          calledAt: null,
-          startedAt: null,
-          staffId: null,
-          windowNumber: null,
-          transferredAt: Date.now(),
-        };
-      }
-      return t;
-    });
-
-    const updatedStaff = staffList.map((s) => {
-      if (s.id === ticket.staffId || s.currentTicketId === ticketId) {
-        return {
-          ...s,
-          status: STAFF_STATUS.AVAILABLE,
-          currentTicketId: null,
-          lastServiceFinishedAt: Date.now(),
-        };
-      }
-      return s;
-    });
-
-    const updatedLogs = addAuditLog(
-      'TICKET_TRANSFERRED',
-      `${ticket.ticketNumber} navbati "${targetService.name}" xizmatiga qayta yo‘naltirildi`,
-      ticket.staffId,
-      ticket.ticketNumber
-    );
-
-    setTickets(updatedTickets);
-    setStaff(updatedStaff);
-    broadcastState(updatedTickets, updatedStaff, null, updatedLogs);
-  };
-
-  /**
-   * Update Staff status (with failover)
-   */
-  const updateStaffStatus = (staffId, newStatus, pauseReason = null) => {
-    const staffList = staff || [];
-    const ticketList = tickets || [];
-
-    const targetStaff = staffList.find((s) => s.id === staffId);
-    let updatedTickets = ticketList;
-
-    if (
-      (newStatus === STAFF_STATUS.OFFLINE || newStatus === STAFF_STATUS.PAUSED) &&
-      targetStaff?.currentTicketId
-    ) {
-      const activeT = ticketList.find((t) => t.id === targetStaff.currentTicketId);
-      if (activeT && activeT.status === TICKET_STATUS.CALLED) {
-        updatedTickets = ticketList.map((t) => {
-          if (t.id === activeT.id) {
-            return {
-              ...t,
-              status: TICKET_STATUS.WAITING,
-              calledAt: null,
-              staffId: null,
-              windowNumber: null,
-            };
-          }
-          return t;
-        });
-
-        addAuditLog(
-          'FAILOVER_REQUEUE',
-          `Xodim (${targetStaff.name}) ${newStatus} bo‘lgani sababli ${activeT.ticketNumber} navbati avtomatik kutish ro‘yxatiga qaytarildi`,
-          targetStaff.id,
-          activeT.ticketNumber
-        );
-      }
-    }
-
-    const updatedStaff = staffList.map((s) => {
-      if (s.id === staffId) {
-        return {
-          ...s,
-          status: newStatus,
-          currentTicketId:
-            newStatus === STAFF_STATUS.OFFLINE || newStatus === STAFF_STATUS.PAUSED ? null : s.currentTicketId,
-          pauseReason: newStatus === STAFF_STATUS.PAUSED ? pauseReason || 'Qisqa tanaffus' : null,
-        };
-      }
-      return s;
-    });
-
-    addAuditLog(
-      'STAFF_STATUS_CHANGE',
-      `${targetStaff?.name || 'Xodim'} holati: ${newStatus}${pauseReason ? ` (${pauseReason})` : ''}`,
-      staffId
-    );
-
-    setTickets(updatedTickets);
-    setStaff(updatedStaff);
-    broadcastState(updatedTickets, updatedStaff);
-  };
-
-  /**
-   * Super Admin: Device management
-   */
-  const restartDevice = (deviceId) => {
-    const devList = devices || INITIAL_DEVICES;
-    const updated = devList.map((d) =>
-      d.id === deviceId ? { ...d, status: 'ONLINE', lastPing: 'Hozirgina' } : d
-    );
-    setDevices(updated);
-    addAuditLog('DEVICE_RESTART', `Qurilma qayta ishga tushirildi (${deviceId})`);
-  };
-
-  const toggleDeviceStatus = (deviceId) => {
-    const devList = devices || INITIAL_DEVICES;
-    const updated = devList.map((d) =>
-      d.id === deviceId ? { ...d, status: d.status === 'ONLINE' ? 'OFFLINE' : 'ONLINE' } : d
-    );
-    setDevices(updated);
-  };
-
-  const addDevice = (newDev) => {
-    const devList = devices || INITIAL_DEVICES;
-    const updated = [...devList, newDev];
-    setDevices(updated);
-  };
-
-  const deleteDevice = (deviceId) => {
-    const devList = devices || INITIAL_DEVICES;
-    const updated = devList.filter((d) => d.id !== deviceId);
-    setDevices(updated);
-  };
-
-  const toggleServiceActive = (serviceId) => {
-    const srvList = services || INITIAL_SERVICES;
-    const updated = srvList.map((s) => (s.id === serviceId ? { ...s, active: !s.active } : s));
-    setServices(updated);
-  };
-
-  const sendOperatorAlert = (message) => {
-    const newAlert = {
-      id: `alt-${Date.now()}`,
-      sender: 'Operator',
-      message,
-      time: new Date().toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }),
-    };
-    setOperatorAlerts((prev) => [newAlert, ...(prev || [])]);
-  };
-
-  const addStaff = (staffData) => {
-    const staffList = staff || INITIAL_STAFF;
-    const nextWin = staffData.windowNumber || `${staffList.length + 1}`;
-    const newStaffMember = {
-      id: `staff-${Date.now()}`,
-      name: staffData.name || 'Yangi Xodim',
-      login: staffData.login || `OP-${100 + staffList.length + 1}`,
-      windowNumber: nextWin,
-      branchId: staffData.branchId || activeBranchId || 'branch-1',
-      authorizedServiceIds: staffData.authorizedServiceIds || ['srv-general', 'srv-accounting'],
-      status: STAFF_STATUS.AVAILABLE,
-      currentTicketId: null,
-      pauseReason: null,
-      servedCountToday: 0,
-      noShowCountToday: 0,
-      lastServiceFinishedAt: null,
-      totalServiceMinutes: 0,
-    };
-    const updatedStaff = [...staffList, newStaffMember];
-    setStaff(updatedStaff);
-    broadcastState(tickets, updatedStaff);
-    addAuditLog(
-      'STAFF_ADDED',
-      `Yangi xodim qo‘shildi: ${newStaffMember.name} (${newStaffMember.windowNumber}-oyna)`,
-      newStaffMember.id
-    );
-    return { success: true, staff: newStaffMember };
-  };
-
-  /**
-   * Talab 7: Xodim ariza topshirishi (Adminga yuboriladi)
-   */
-  const submitStaffRequest = (requestData) => {
-    const existing = staff.find((s) => s.login === requestData.login || s.name === requestData.name);
-    if (existing) {
-      return { success: false, error: 'Bu nomdagi xodim tizimda allaqachon mavjud!' };
-    }
-
-    const newReq = {
-      id: `req-${Date.now()}`,
-      name: requestData.name,
-      login: requestData.login || `OP-${100 + staff.length + staffRequests.length + 1}`,
-      password: requestData.password || '123',
-      phone: requestData.phone || '',
-      windowNumber: requestData.windowNumber || `${staff.length + 1}`,
-      branchId: requestData.branchId || activeBranchId || 'branch-1',
-      authorizedServiceIds: requestData.authorizedServiceIds || ['srv-general', 'srv-accounting'],
-      createdAt: Date.now(),
-      status: 'PENDING',
-    };
-
-    const updated = [newReq, ...staffRequests];
-    setStaffRequests(updated);
-    addAuditLog('STAFF_REQUEST_SUBMITTED', `Yangi xodimlik arizasi: ${newReq.name} (${newReq.windowNumber}-oyna)`);
-    return { success: true, request: newReq };
-  };
-
-  /**
-   * Talab 7: Admin xodim arizasini qabul qilishi
-   */
-  const approveStaffRequest = (requestId) => {
-    const req = staffRequests.find((r) => r.id === requestId);
-    if (!req) return { success: false, error: 'Ariza topilmadi' };
-
-    const newStaffMember = {
-      id: `staff-${Date.now()}`,
-      name: req.name,
-      login: req.login,
-      password: req.password,
-      phone: req.phone,
-      windowNumber: req.windowNumber,
-      branchId: req.branchId || activeBranchId || 'branch-1',
-      authorizedServiceIds: req.authorizedServiceIds || ['srv-general', 'srv-accounting'],
-      status: STAFF_STATUS.AVAILABLE,
-      currentTicketId: null,
-      pauseReason: null,
-      servedCountToday: 0,
-      noShowCountToday: 0,
-      lastServiceFinishedAt: null,
-      totalServiceMinutes: 0,
-    };
-
-    const updatedStaff = [...staff, newStaffMember];
-    const updatedRequests = staffRequests.map((r) =>
-      r.id === requestId ? { ...r, status: 'APPROVED' } : r
-    );
-
-    setStaff(updatedStaff);
-    setStaffRequests(updatedRequests);
-    broadcastState(tickets, updatedStaff);
-    addAuditLog('STAFF_APPROVED', `Admin ${req.name} arizasini tasdiqladi va xodim qo‘shildi!`);
-    return { success: true, staff: newStaffMember };
-  };
-
-  /**
-   * Talab 7: Admin xodim arizasini rad etishi
-   */
-  const rejectStaffRequest = (requestId) => {
-    const req = staffRequests.find((r) => r.id === requestId);
-    const updatedRequests = staffRequests.map((r) =>
-      r.id === requestId ? { ...r, status: 'REJECTED' } : r
-    );
-    setStaffRequests(updatedRequests);
-    addAuditLog('STAFF_REJECTED', `Admin ${req?.name || ''} arizasini rad etdi`);
-    return { success: true };
-  };
-
-  /**
-   * Talab 7: Admin xodimni tizimdan o'chira olishi
-   */
-  const deleteStaff = (staffId) => {
-    const target = staff.find((s) => s.id === staffId);
-    if (!target) return { success: false, error: 'Xodim topilmadi' };
-
-    const updatedStaff = staff.filter((s) => s.id !== staffId);
-    setStaff(updatedStaff);
-    broadcastState(tickets, updatedStaff);
-    addAuditLog('STAFF_DELETED', `Admin ${target.name} (${target.windowNumber}-oyna) xodimini tizimdan o‘chirdi!`);
-    return { success: true };
-  };
-
-  const resetToDemo = () => {
-    setBranches(INITIAL_BRANCHES);
-    setServices(INITIAL_SERVICES);
-    setStaff(INITIAL_STAFF);
-    setTickets(INITIAL_TICKETS);
-    setDevices(INITIAL_DEVICES);
-    setAuditLogs(INITIAL_AUDIT_LOGS);
-    setStaffRequests([]);
-    setRegisteredClients([]);
+  const transferTicket = async (ticketId, targetServiceId) => {
     try {
-      localStorage.clear();
-    } catch {}
-    broadcastState(INITIAL_TICKETS, INITIAL_STAFF);
+      await api.transferTicket(ticketId, targetServiceId, activeStaffId);
+      syncWithBackend();
+    } catch (e) {
+      console.warn('Backend transferTicket error:', e);
+    }
   };
 
-  const clearQueue = () => {
-    const staffList = staff || INITIAL_STAFF;
-    const resetStaff = staffList.map((s) => ({
-      ...s,
-      status: STAFF_STATUS.AVAILABLE,
-      currentTicketId: null,
-      noShowCountToday: 0,
-    }));
-    setTickets([]);
-    setStaff(resetStaff);
-    broadcastState([], resetStaff);
+  /**
+   * Update Staff status (AVAILABLE, PAUSED, OFFLINE)
+   */
+  const updateStaffStatus = async (staffId, newStatus, pauseReason = null) => {
+    try {
+      await api.updateStaffStatus(staffId, newStatus, pauseReason);
+      setStaff((prev) =>
+        prev.map((s) => (s.id === staffId ? { ...s, status: newStatus, pauseReason } : s))
+      );
+      syncWithBackend();
+    } catch (e) {
+      console.warn('Backend updateStaffStatus error:', e);
+    }
+  };
+
+  /**
+   * Admin actions
+   */
+  const addStaff = async (staffData) => {
+    try {
+      const res = await api.addStaff(staffData);
+      if (res.success && res.staff) {
+        const formatted = normalizeStaff(res.staff);
+        setStaff((prev) => [...prev.filter((s) => s.id !== formatted.id), formatted]);
+        syncWithBackend();
+        return { success: true, staff: formatted };
+      }
+      return { success: false, error: res?.error || 'Xodim qo‘shib bo‘lmadi' };
+    } catch (e) {
+      console.warn('Backend addStaff error:', e);
+      return { success: false, error: e.message };
+    }
+  };
+
+  const updateStaff = async (staffId, staffData) => {
+    try {
+      const res = await api.updateStaff(staffId, staffData);
+      if (res.success && res.staff) {
+        const formatted = normalizeStaff(res.staff);
+        setStaff((prev) => prev.map((s) => (s.id === staffId ? { ...s, ...formatted } : s)));
+        syncWithBackend();
+        return { success: true, staff: formatted };
+      }
+      return { success: false, error: res?.error || 'Xodimni tahrirlab bo‘lmadi' };
+    } catch (e) {
+      console.warn('Backend updateStaff error:', e);
+      return { success: false, error: e.message };
+    }
+  };
+
+  const createBranch = async (branchData) => {
+    try {
+      const res = await api.createBranch(branchData);
+      if (res.success && res.branch) {
+        setBranches((prev) => [...prev, res.branch]);
+        syncWithBackend();
+        return { success: true, branch: res.branch };
+      }
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  };
+
+  const updateBranch = async (branchId, branchData) => {
+    try {
+      const res = await api.updateBranch(branchId, branchData);
+      if (res.success && res.branch) {
+        setBranches((prev) => prev.map((b) => (b.id === branchId ? { ...b, ...res.branch } : b)));
+        syncWithBackend();
+        return { success: true, branch: res.branch };
+      }
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  };
+
+  const deleteStaff = async (staffId) => {
+    try {
+      await api.deleteStaff(staffId);
+      setStaff((prev) => prev.filter((s) => s.id !== staffId));
+      syncWithBackend();
+      return { success: true };
+    } catch (e) {
+      console.warn('Backend deleteStaff error:', e);
+      return { success: false, error: e.message };
+    }
+  };
+
+  const submitStaffRequest = async (requestData) => {
+    try {
+      const res = await api.registerRequest(requestData);
+      return res;
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  };
+
+  const approveStaffRequest = async (requestId) => {
+    try {
+      const res = await api.approveStaffRequest(requestId);
+      syncWithBackend();
+      return res;
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  };
+
+  const rejectStaffRequest = async (requestId) => {
+    try {
+      const res = await api.rejectStaffRequest(requestId);
+      syncWithBackend();
+      return res;
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  };
+
+  const restartDevice = async (deviceId) => {
+    try {
+      await api.restartDevice(deviceId);
+      setDevices((prev) =>
+        prev.map((d) => (d.id === deviceId ? { ...d, status: 'ONLINE', lastPing: 'Hozirgina' } : d))
+      );
+    } catch (e) {}
+  };
+
+  const toggleDeviceStatus = async (deviceId) => {
+    try {
+      await api.toggleDeviceStatus(deviceId);
+      setDevices((prev) =>
+        prev.map((d) => (d.id === deviceId ? { ...d, status: d.status === 'ONLINE' ? 'OFFLINE' : 'ONLINE' } : d))
+      );
+    } catch (e) {}
+  };
+
+  const updateService = async (serviceId, serviceData) => {
+    try {
+      const res = await api.updateService(serviceId, serviceData);
+      if (res.success && res.service) {
+        setServices((prev) =>
+          prev.map((s) =>
+            s.id === serviceId
+              ? {
+                  ...s,
+                  ...res.service,
+                  avgDurationMin: res.service.avg_duration_min || res.service.avgDurationMin,
+                }
+              : s
+          )
+        );
+        syncWithBackend();
+        return { success: true, service: res.service };
+      }
+      return { success: false, error: res?.error || 'Bo‘limni tahrirlashda xatolik yuz berdi' };
+    } catch (e) {
+      console.warn('Backend updateService error:', e);
+      return { success: false, error: e.message };
+    }
+  };
+
+  const toggleServiceActive = async (serviceId) => {
+    try {
+      await api.toggleService(serviceId);
+      setServices((prev) => prev.map((s) => (s.id === serviceId ? { ...s, active: !s.active } : s)));
+    } catch (e) {}
+  };
+
+  const resetToDemo = async () => {
+    try {
+      await api.resetDemo();
+      syncWithBackend();
+    } catch (e) {}
+  };
+
+  const clearQueue = async () => {
+    try {
+      await api.clearQueue(activeBranchId);
+      setTickets([]);
+      syncWithBackend();
+    } catch (e) {}
   };
 
   return (
@@ -991,9 +695,11 @@ export function QueueProvider({ children }) {
         tickets: tickets || INITIAL_TICKETS,
         devices: devices || INITIAL_DEVICES,
         auditLogs: auditLogs || INITIAL_AUDIT_LOGS,
+        currentUser,
+        setCurrentUser,
+        logoutUser,
         operatorAlerts: operatorAlerts || [],
         staffRequests: staffRequests || [],
-        registeredClients: registeredClients || [],
         activeBranchId,
         setActiveBranchId,
         activeStaffId,
@@ -1005,6 +711,7 @@ export function QueueProvider({ children }) {
         setSpeechEnabled,
         centralQueueRouting,
         setCentralQueueRouting,
+        isBackendConnected,
         createTicket,
         callNextCustomer,
         recallCustomer,
@@ -1015,18 +722,19 @@ export function QueueProvider({ children }) {
         updateStaffStatus,
         restartDevice,
         toggleDeviceStatus,
-        addDevice,
-        deleteDevice,
         addStaff,
+        updateStaff,
         deleteStaff,
+        createBranch,
+        updateBranch,
         submitStaffRequest,
         approveStaffRequest,
         rejectStaffRequest,
-        registerClient,
+        updateService,
         toggleServiceActive,
-        sendOperatorAlert,
         resetToDemo,
         clearQueue,
+        syncWithBackend,
       }}
     >
       {children}

@@ -17,9 +17,9 @@ export class ErrorBoundary extends React.Component {
 
   handleReset = () => {
     try {
-      localStorage.clear();
+      localStorage.removeItem('qms_admin_auth');
     } catch {}
-    window.location.href = window.location.origin + window.location.pathname;
+    window.location.href = '/login';
   };
 
   render() {
@@ -53,11 +53,11 @@ export class ErrorBoundary extends React.Component {
               <button
                 onClick={() => {
                   this.setState({ hasError: false, error: null });
-                  window.location.search = '?view=kiosk';
+                  window.location.href = '/login';
                 }}
                 className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold cursor-pointer"
               >
-                Bosh sahifa
+                Kirish sahifasi
               </button>
             </div>
           </div>

@@ -4,16 +4,20 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { Navbar } from './components/Navbar';
 import { KioskView } from './components/KioskView';
 import { StaffView } from './components/StaffView';
+import { ManagerDashboard } from './components/ManagerDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { DisplayView } from './components/DisplayView';
-import { Bell, CheckCircle2, AlertCircle, Info } from 'lucide-react';
+import { LoginPage } from './components/LoginPage';
+import { Bell, CheckCircle2, AlertCircle, Info, Wifi, WifiOff } from 'lucide-react';
 
-// 4 ta alohida Page yo'llari (Talab 1)
+// 5 ta alohida Web interfeysi (Section 1) + Login
 export const ROUTES = {
-  KIOSK: '/', // 1. Mijozlar terminali (Kiosk)
-  STAFF: '/staff', // 2. Xodimlar / Operator ish stoli
-  DISPLAY: '/display', // 3. Monitordagi elektron navbat (Katta Tablo)
-  ADMIN: '/admin', // 4. Admin va samaradorlik
+  LOGIN: '/login', // 1-chi kirish sahifasi (Boshlang'ich)
+  KIOSK: '/kiosk', // Planshet (Mijozlar terminali)
+  STAFF: '/staff', // Xodimlar / Operator ish stoli
+  MANAGER: '/manager', // Menejer boshqaruv paneli
+  ADMIN: '/admin', // Admin va Superadmin sozlamalari
+  DISPLAY: '/display', // Televizor (Monitordagi elektron navbat)
 };
 
 function getViewFromLocation() {
@@ -23,47 +27,69 @@ function getViewFromLocation() {
     const params = new URLSearchParams(window.location.search);
     const viewQuery = params.get('view')?.toLowerCase();
 
-    // Check query params (?view=display, ?view=staff, etc.)
-    if (viewQuery) {
-      if (['staff', 'operator'].includes(viewQuery)) return 'staff';
-      if (['admin', 'manager'].includes(viewQuery)) return 'admin';
-      if (['display', 'tv', 'tablo', 'monitor'].includes(viewQuery)) return 'display';
-      if (['kiosk', 'mijoz', 'client'].includes(viewQuery)) return 'kiosk';
+    // 1. Televizor Tablo Monitori (/display) — televizorga ulash uchun mustaqil
+    if (viewQuery && ['display', 'tv', 'tablo', 'monitor'].includes(viewQuery)) return 'display';
+    if (hash && (hash.includes('display') || hash.includes('tablo') || hash.includes('monitor') || hash.includes('tv'))) return 'display';
+    if (path.includes('display') || path.includes('tablo') || path.includes('tv')) return 'display';
+
+    // 2. Planshet Kioski (/kiosk) — mijozlar terminali uchun mustaqil
+    if (viewQuery && ['kiosk', 'mijoz', 'terminal', 'planshet'].includes(viewQuery)) return 'kiosk';
+    if (hash && (hash.includes('kiosk') || hash.includes('mijoz') || hash.includes('planshet'))) return 'kiosk';
+    if (path.includes('kiosk') || path.includes('planshet')) return 'kiosk';
+
+    // 3. Tizimga kirgan foydalanuvchining roli bo'yicha ruxsatlarni tekshirish
+    const userStr = localStorage.getItem('qms_user');
+    const user = userStr ? JSON.parse(userStr) : null;
+
+    if (user) {
+      // OPERATOR faqat operator sahifasini ko'ra oladi
+      if (user.role === 'OPERATOR') {
+        return 'staff';
+      }
+      // SUPERADMIN va MANAGER (Filial Menejeri / Admin) faqat admin va menejerni ko'ra oladi (Operator stoli ko'rinmaydi)
+      if (user.role === 'SUPERADMIN' || user.role === 'MANAGER' || user.role === 'ADMIN') {
+        if (path.includes('manager') || viewQuery === 'manager' || hash.includes('manager')) return 'manager';
+        return 'admin';
+      }
     }
 
-    // Check hash (#display, #staff, #admin, etc.)
-    if (hash) {
-      if (hash.includes('staff') || hash.includes('operator')) return 'staff';
-      if (hash.includes('display') || hash.includes('tablo') || hash.includes('monitor') || hash.includes('tv')) return 'display';
-      if (hash.includes('admin') || hash.includes('manager')) return 'admin';
-      if (hash.includes('kiosk') || hash.includes('mijoz')) return 'kiosk';
-    }
-
-    // Check URL pathnames (/display, /staff, /admin, etc.)
-    if (path.includes('staff') || path.includes('operator')) return 'staff';
-    if (path.includes('display') || path.includes('tablo') || path.includes('monitor') || path.includes('tv')) return 'display';
-    if (path.includes('admin') || path.includes('manager')) return 'admin';
-
-    // Default root is customer kiosk
-    return 'kiosk';
+    // Tizimga kirmagan bo'lsa, 1-chi bo'lib LOGIN sahifasiga yo'naltirish
+    return 'login';
   } catch {
-    return 'kiosk';
+    return 'login';
   }
 }
 
 function MainApp() {
   const [currentView, setCurrentView] = useState(getViewFromLocation);
   const [globalToast, setGlobalToast] = useState(null);
-  const { callNextCustomer, activeStaffId, staff } = useQueue();
+  const { callNextCustomer, activeStaffId, staff, isBackendConnected } = useQueue();
 
   // Synchronize URL and history when view changes
   const navigateTo = (view) => {
+    try {
+      const userStr = localStorage.getItem('qms_user');
+      const user = userStr ? JSON.parse(userStr) : null;
+
+      // OPERATOR faqat staff ni ko'radi
+      if (user?.role === 'OPERATOR' && view !== 'login' && view !== 'staff') {
+        view = 'staff';
+      }
+      // SUPERADMIN va MANAGER faqat admin va manager ni ko'radi (Operator stoliga ruxsat yo'q)
+      else if ((user?.role === 'SUPERADMIN' || user?.role === 'MANAGER' || user?.role === 'ADMIN') && view !== 'login' && view !== 'admin' && view !== 'manager') {
+        view = 'admin';
+      }
+    } catch {}
+
     setCurrentView(view);
     try {
-      let targetPath = ROUTES.KIOSK;
+      let targetPath = ROUTES.LOGIN;
       if (view === 'staff') targetPath = ROUTES.STAFF;
+      else if (view === 'manager') targetPath = ROUTES.MANAGER;
       else if (view === 'admin') targetPath = ROUTES.ADMIN;
       else if (view === 'display') targetPath = ROUTES.DISPLAY;
+      else if (view === 'kiosk') targetPath = ROUTES.KIOSK;
+      else if (view === 'login') targetPath = ROUTES.LOGIN;
 
       window.history.pushState({}, '', targetPath);
     } catch {}
@@ -86,8 +112,7 @@ function MainApp() {
   useEffect(() => {
     let toastTimer = null;
 
-    const handleGlobalKeyDown = (e) => {
-      // Input yoki textarea ichida yozayotgan bo'lsa xalaqit bermaslik
+    const handleGlobalKeyDown = async (e) => {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target?.tagName)) return;
       if (e.target?.isContentEditable) return;
 
@@ -95,11 +120,29 @@ function MainApp() {
         e.preventDefault();
         e.stopPropagation();
 
-        const currentStaffId = activeStaffId || staff?.[0]?.id || 'staff-1';
-        const operator = staff?.find((s) => s.id === currentStaffId) || staff?.[0];
+        const userStr = localStorage.getItem('qms_user');
+        const user = userStr ? JSON.parse(userStr) : null;
+        if (user && user.role !== 'OPERATOR') {
+          if (toastTimer) clearTimeout(toastTimer);
+          setGlobalToast({
+            type: 'warning',
+            title: 'F2 — Ruxsat cheklangan',
+            message: 'Mijozlarga faqat xizmat ko‘rsatuvchi operator xodim xizmat qila oladi. Admin va Superadmin mijoz chaqira olmaydi.',
+          });
+          toastTimer = setTimeout(() => setGlobalToast(null), 4000);
+          return;
+        }
 
-        // autoAdvance=true: avtomatik teng taqsimlash qoidasi bo'yicha keyingisini chaqiradi
-        const res = callNextCustomer(currentStaffId, true);
+        const operatorStaff = staff?.filter((s) => (s.role_id || s.roleId || s.role) === 'OPERATOR') || [];
+        const currentStaffId =
+          (user?.role === 'OPERATOR' && user?.id) ||
+          (activeStaffId && operatorStaff.some((s) => s.id === activeStaffId) ? activeStaffId : null) ||
+          operatorStaff[0]?.id ||
+          'staff-1';
+
+        const operator = operatorStaff.find((s) => s.id === currentStaffId) || operatorStaff[0];
+
+        const res = await callNextCustomer(currentStaffId, true);
 
         if (toastTimer) clearTimeout(toastTimer);
 
@@ -109,10 +152,10 @@ function MainApp() {
             title: res.turnSkipped
               ? 'F2 — Teng taqsimlash bo‘yicha chaqirildi'
               : 'F2 — Keyingi mijoz chaqirildi',
-            ticketNumber: res.ticket.ticketNumber,
-            windowNumber: res.ticket.windowNumber || operator?.windowNumber || '1',
+            ticketNumber: res.ticket.ticketNumber || res.ticket.ticket_number,
+            windowNumber: res.ticket.windowNumber || res.ticket.window_number || operator?.windowNumber || '1',
             staffName: res.operator?.name || operator?.name || 'Operator',
-            serviceName: res.ticket.serviceName,
+            serviceName: res.ticket.serviceName || res.ticket.service_name || 'Xizmat',
             previousCompleted: res.previousCompleted,
             message: res.message,
           });
@@ -144,15 +187,38 @@ function MainApp() {
     };
   }, [activeStaffId, staff, callNextCustomer]);
 
-  const isCustomerPage = currentView === 'kiosk';
-  const isDisplayPage = currentView === 'display';
-
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans relative">
       
-      {/* Global F2 HUD Notification Popup - Oq va To'q Yashil */}
+      {/* Top Navigation Bar with View Switcher */}
+      <Navbar currentView={currentView} setCurrentView={navigateTo} />
+
+      {/* Backend PostgreSQL Connection Badge */}
+      <div className="fixed bottom-3 right-3 z-50 pointer-events-none">
+        <div
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-md border ${
+            isBackendConnected
+              ? 'bg-emerald-950 text-emerald-200 border-emerald-700'
+              : 'bg-amber-950 text-amber-200 border-amber-700'
+          }`}
+        >
+          {isBackendConnected ? (
+            <>
+              <Wifi className="w-3 h-3 text-emerald-400 animate-pulse" />
+              <span>PostgreSQL & Socket.IO: Faol</span>
+            </>
+          ) : (
+            <>
+              <WifiOff className="w-3 h-3 text-amber-400" />
+              <span>Lokal Rejim</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Global F2 HUD Notification Popup */}
       {globalToast && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none transition-all duration-300 max-w-md w-[92vw] sm:w-full">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none transition-all duration-300 max-w-md w-[92vw] sm:w-full">
           <div
             className={`p-4 rounded-3xl shadow-2xl backdrop-blur-xl border-2 flex items-start gap-3.5 bg-white ${
               globalToast.type === 'success'
@@ -220,11 +286,13 @@ function MainApp() {
         </div>
       )}
 
-      {/* Sahifalar mustaqil: faqat URL manzil orqali kiriladi (Talab 1 & 3) */}
+      {/* 5 ta interfeys + Login render qilinishi */}
       <main className="flex-1">
         <ErrorBoundary>
+          {currentView === 'login' && <LoginPage onNavigate={navigateTo} />}
           {currentView === 'kiosk' && <KioskView />}
           {currentView === 'staff' && <StaffView />}
+          {currentView === 'manager' && <ManagerDashboard />}
           {currentView === 'display' && <DisplayView />}
           {currentView === 'admin' && <AdminDashboard />}
         </ErrorBoundary>

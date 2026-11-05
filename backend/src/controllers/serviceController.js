@@ -1,0 +1,106 @@
+import { query } from '../config/db.js';
+import { getIO } from '../services/socketService.js';
+
+export async function getServices(req, res, next) {
+  try {
+    const result = await query(`SELECT * FROM services ORDER BY priority_weight DESC, name`);
+    res.json({ success: true, services: result.rows });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function createService(req, res, next) {
+  try {
+    const { name, description, prefix, avgDurationMin, icon, priorityWeight, category } = req.body;
+    if (!name || !prefix) {
+      return res.status(400).json({ success: false, error: 'Xizmat nomi va prefiksi shart!' });
+    }
+
+    const id = `srv-${Date.now()}`;
+    const result = await query(
+      `INSERT INTO services 
+        (id, name, description, prefix, avg_duration_min, icon, priority_weight, category, active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
+       RETURNING *`,
+      [id, name.trim(), description, prefix.trim().toUpperCase(), avgDurationMin || 10, icon || 'Layers', priorityWeight || 1, category || 'general']
+    );
+
+    const io = getIO();
+    if (io) {
+      io.emit('service:updated', result.rows[0]);
+    }
+
+    res.status(201).json({ success: true, service: result.rows[0] });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateService(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { name, description, prefix, icon, priorityWeight, category, active } = req.body;
+    const avgDuration = req.body.avgDurationMin !== undefined ? req.body.avgDurationMin : req.body.avg_duration_min;
+
+    const result = await query(
+      `UPDATE services 
+       SET name = COALESCE($1, name),
+           description = COALESCE($2, description),
+           prefix = COALESCE($3, prefix),
+           avg_duration_min = COALESCE($4, avg_duration_min),
+           icon = COALESCE($5, icon),
+           priority_weight = COALESCE($6, priority_weight),
+           category = COALESCE($7, category),
+           active = COALESCE($8, active)
+       WHERE id = $9
+       RETURNING *`,
+      [
+        name ? name.trim() : null,
+        description !== undefined ? description : null,
+        prefix ? prefix.trim().toUpperCase() : null,
+        avgDuration !== undefined ? avgDuration : null,
+        icon !== undefined ? icon : null,
+        priorityWeight !== undefined ? priorityWeight : null,
+        category !== undefined ? category : null,
+        active !== undefined ? active : null,
+        id,
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Xizmat turi topilmadi!' });
+    }
+
+    const io = getIO();
+    if (io) {
+      io.emit('service:updated', result.rows[0]);
+    }
+
+    res.json({ success: true, service: result.rows[0] });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function toggleServiceActive(req, res, next) {
+  try {
+    const { id } = req.params;
+    const result = await query(
+      `UPDATE services SET active = NOT active WHERE id = $1 RETURNING *`,
+      [id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Xizmat topilmadi!' });
+    }
+
+    const io = getIO();
+    if (io) {
+      io.emit('service:updated', result.rows[0]);
+    }
+
+    res.json({ success: true, service: result.rows[0] });
+  } catch (err) {
+    next(err);
+  }
+}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQueue } from '../context/QueueContext';
 import {
   Smartphone,
@@ -11,6 +11,10 @@ import {
   ExternalLink,
   Layers,
   Sparkles,
+  BarChart2,
+  LogIn,
+  LogOut,
+  User,
 } from 'lucide-react';
 
 export function Navbar({ currentView, setCurrentView }) {
@@ -23,22 +27,50 @@ export function Navbar({ currentView, setCurrentView }) {
     setAudioEnabled,
     speechEnabled,
     setSpeechEnabled,
+    currentUser,
+    setCurrentUser,
+    logoutUser,
   } = useQueue();
+
+  // Har safar sahifa o'zgarganda foydalanuvchi sessiyasini yangilab borish
+  useEffect(() => {
+    try {
+      const u = localStorage.getItem('qms_user');
+      setCurrentUser(u ? JSON.parse(u) : null);
+    } catch {
+      setCurrentUser(null);
+    }
+  }, [currentView, setCurrentUser]);
 
   const waitingCount = tickets.filter(
     (t) => t.branchId === activeBranchId && t.status === 'WAITING'
   ).length;
 
-  // 4 ta alohida sahifa (Talab 1)
-  const navItems = [
-    { id: 'kiosk', label: '1. Mijoz Kioski', icon: Smartphone, badge: null },
-    { id: 'staff', label: '2. Xodim (Operator)', icon: Briefcase, badge: waitingCount > 0 ? waitingCount : null },
-    { id: 'display', label: '3. Elektron Navbat (Monitor)', icon: Monitor, badge: null },
-    { id: 'admin', label: '4. Admin & Samaradorlik', icon: Shield, badge: null },
-  ];
+  // Planshet (Kiosk) va Televizor (Display) rejimlarida Navbar umuman ko'rinmasin
+  if (currentView === 'kiosk' || currentView === 'display') {
+    return null;
+  }
+
+  // Rollar: Administrator roli o'chirildi, Filial Menejeri admin bo'ldi. Superadmin ikkala panelni ko'radi.
+  let navItems = [];
+  if (currentUser?.role === 'OPERATOR') {
+    navItems = [
+      { id: 'staff', label: 'Operator Ish Stoli', icon: Briefcase, badge: waitingCount > 0 ? waitingCount : null },
+    ];
+  } else if (currentUser?.role === 'SUPERADMIN' || currentUser?.role === 'MANAGER' || currentUser?.role === 'ADMIN') {
+    navItems = [
+      { id: 'admin', label: 'Admin Paneli', icon: Shield, badge: null },
+      { id: 'manager', label: 'Menejer Paneli', icon: BarChart2, badge: null },
+    ];
+  }
 
   const handleOpenNewWindow = () => {
     window.open(window.location.href, '_blank', 'width=1200,height=800');
+  };
+
+  const handleLogout = () => {
+    logoutUser();
+    setCurrentView('login');
   };
 
   return (
@@ -46,26 +78,34 @@ export function Navbar({ currentView, setCurrentView }) {
       <div className="max-w-7xl mx-auto px-3 sm:px-6">
         <div className="flex items-center justify-between h-16 gap-3">
           
-          {/* Logo & Title - Oq va To'q Yashil */}
-          <div className="flex items-center gap-3">
+          {/* Logo & Title */}
+          <div
+            onClick={() => {
+              if (currentUser?.role === 'SUPERADMIN' || currentUser?.role === 'MANAGER' || currentUser?.role === 'ADMIN') {
+                setCurrentView('admin');
+              } else if (currentUser?.role === 'OPERATOR') {
+                setCurrentView('staff');
+              } else {
+                setCurrentView('login');
+              }
+            }}
+            className="flex items-center gap-3 cursor-pointer"
+          >
             <div className="w-10 h-10 rounded-2xl bg-white text-emerald-950 flex items-center justify-center shadow-md font-black text-lg">
               <Layers className="w-5 h-5 text-emerald-900" />
             </div>
             <div className="hidden sm:block">
               <div className="text-sm font-black text-white tracking-tight flex items-center gap-1.5">
                 <span>ELEKTRON NAVBAT</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-800 text-emerald-200 border border-emerald-700">
-                  QMS PRO
-                </span>
               </div>
               <div className="text-[10px] font-medium text-emerald-300">
-                Oq & To‘q Yashil Bank Tizimi
+                PostgreSQL & Real-time Web
               </div>
             </div>
           </div>
 
-          {/* Navigation Items (4 ta alohida sahifa) */}
-          <nav className="flex items-center gap-1 sm:gap-2">
+          {/* Navigation Items (Rollar bo'yicha filtrlangan) */}
+          <nav className="flex items-center gap-1 sm:gap-1.5">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = currentView === item.id;
@@ -91,40 +131,68 @@ export function Navbar({ currentView, setCurrentView }) {
             })}
           </nav>
 
-          {/* Right Controls: Branch Selector & Audio */}
+          {/* Right Controls: User Profile / Login, Branch Selector, Audio */}
           <div className="flex items-center gap-2">
             
-            {/* Branch Selector */}
+            {/* User Auth Info or Login button */}
+            {currentUser ? (
+              <div className="flex items-center gap-2 bg-emerald-900/90 border border-emerald-700/80 px-2.5 py-1.5 rounded-xl text-xs">
+                <User className="w-3.5 h-3.5 text-emerald-300" />
+                <span className="font-bold text-white hidden sm:inline max-w-[150px] truncate">
+                  {currentUser.role === 'OPERATOR'
+                    ? `Xodim: ${currentUser.name}`
+                    : currentUser.role === 'SUPERADMIN'
+                    ? `Superadmin: ${currentUser.name}`
+                    : `Filial Menejeri: ${currentUser.name}`}
+                </span>
+                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-emerald-800 text-emerald-200 border border-emerald-600">
+                  {currentUser.role === 'MANAGER' ? 'ADMIN' : currentUser.role}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  title="Tizimdan chiqish"
+                  className="ml-1 text-emerald-400 hover:text-rose-300 cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setCurrentView('login')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                  currentView === 'login'
+                    ? 'bg-white text-emerald-950 border-white'
+                    : 'bg-emerald-900 hover:bg-emerald-800 text-emerald-200 border-emerald-700'
+                }`}
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Kirish</span>
+              </button>
+            )}
+
+            {/* Filial (Yagona Markaziy Filial) */}
             <div className="hidden lg:flex items-center gap-1.5 bg-emerald-900/90 border border-emerald-700/80 px-2.5 py-1.5 rounded-xl text-xs text-emerald-200">
               <Building2 className="w-3.5 h-3.5 text-emerald-400" />
-              <select
-                value={activeBranchId}
-                onChange={(e) => setActiveBranchId(e.target.value)}
-                className="bg-transparent text-white font-semibold focus:outline-hidden cursor-pointer"
-              >
-                {branches.map((b) => (
-                  <option key={b.id} value={b.id} className="bg-emerald-950 text-white">
-                    {b.name}
-                  </option>
-                ))}
-              </select>
+              <span className="font-semibold text-white">Markaziy Bosh Filial</span>
             </div>
 
-            {/* Audio Toggle */}
-            <button
-              onClick={() => {
-                setAudioEnabled(!audioEnabled);
-                setSpeechEnabled(!audioEnabled);
-              }}
-              title={audioEnabled ? "Ovozni o'chirish" : "Ovozni yoqish"}
-              className={`p-2 rounded-xl border transition-all cursor-pointer ${
-                audioEnabled
-                  ? 'bg-emerald-800 border-emerald-600 text-emerald-200'
-                  : 'bg-emerald-950 border-emerald-800 text-emerald-400 opacity-60'
-              }`}
-            >
-              {audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-            </button>
+            {/* Audio Toggle: ONLY SUPERADMIN and MANAGER can control sound */}
+            {currentUser && (currentUser.role === 'SUPERADMIN' || currentUser.role === 'MANAGER' || currentUser.role === 'ADMIN') && (
+              <button
+                onClick={() => {
+                  setAudioEnabled(!audioEnabled);
+                  setSpeechEnabled(!audioEnabled);
+                }}
+                title={audioEnabled ? "Ovozni o'chirish" : "Ovozni yoqish"}
+                className={`p-2 rounded-xl border transition-all cursor-pointer ${
+                  audioEnabled
+                    ? 'bg-emerald-800 border-emerald-600 text-emerald-200'
+                    : 'bg-emerald-950 border-emerald-800 text-emerald-400 opacity-60'
+                }`}
+              >
+                {audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+              </button>
+            )}
 
             {/* Open in New Window */}
             <button

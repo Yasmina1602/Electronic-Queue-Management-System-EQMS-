@@ -20,7 +20,9 @@ function getAudioContext() {
 }
 
 /**
- * Pleasant two-tone chime for calling tickets (Bank/Airport style)
+ * Yoqimli va jarangdor "Ding-Dong" ovoz signali (Zamonaviy bank / aeroport / xalqaro standart)
+ * Birinchi nota: "Ding" (880 Hz - A5, jarangdor yuqori nota)
+ * Ikkinchi nota: "Dong" (587.33 Hz - D5, mayin, chuqur va uzoq jaranglovchi nota)
  */
 export function playChime() {
   try {
@@ -29,31 +31,76 @@ export function playChime() {
 
     const now = ctx.currentTime;
     
-    // Tone 1: 659.25 Hz (E5)
-    const osc1 = ctx.createOscillator();
-    const gain1 = ctx.createGain();
-    osc1.type = 'sine';
-    osc1.frequency.setValueAtTime(659.25, now);
-    gain1.gain.setValueAtTime(0, now);
-    gain1.gain.linearRampToValueAtTime(0.35, now + 0.05);
-    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
-    osc1.connect(gain1);
-    gain1.connect(ctx.destination);
-    osc1.start(now);
-    osc1.stop(now + 0.55);
+    // Master limiter/compressor gain to ensure silky-smooth, clear sound without clipping
+    const masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(0.35, now);
+    masterGain.connect(ctx.destination);
 
-    // Tone 2: 880 Hz (A5) slightly delayed
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(880, now + 0.28);
-    gain2.gain.setValueAtTime(0, now + 0.28);
-    gain2.gain.linearRampToValueAtTime(0.4, now + 0.32);
-    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.95);
-    osc2.connect(gain2);
-    gain2.connect(ctx.destination);
-    osc2.start(now + 0.28);
-    osc2.stop(now + 0.95);
+    // ==========================================
+    // 1. "DING" (Birinchi nota: A5 = 880 Hz)
+    // ==========================================
+    const dingOsc = ctx.createOscillator();
+    const dingGain = ctx.createGain();
+    dingOsc.type = 'sine';
+    dingOsc.frequency.setValueAtTime(880, now);
+
+    // Qo'shimcha yumshoq garmonika (vibrofon / glockenspiel jilosi)
+    const dingHarmonic = ctx.createOscillator();
+    const dingHarmonicGain = ctx.createGain();
+    dingHarmonic.type = 'sine';
+    dingHarmonic.frequency.setValueAtTime(1760, now);
+
+    dingGain.gain.setValueAtTime(0, now);
+    dingGain.gain.linearRampToValueAtTime(0.7, now + 0.015);
+    dingGain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+
+    dingHarmonicGain.gain.setValueAtTime(0, now);
+    dingHarmonicGain.gain.linearRampToValueAtTime(0.15, now + 0.01);
+    dingHarmonicGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+    dingOsc.connect(dingGain);
+    dingHarmonic.connect(dingHarmonicGain);
+    dingGain.connect(masterGain);
+    dingHarmonicGain.connect(masterGain);
+
+    dingOsc.start(now);
+    dingHarmonic.start(now);
+    dingOsc.stop(now + 0.65);
+    dingHarmonic.stop(now + 0.35);
+
+    // ==========================================
+    // 2. "DONG" (Ikkinchi nota: D5 = 587.33 Hz, 0.32s kechikish bilan)
+    // ==========================================
+    const dongTime = now + 0.32;
+
+    const dongOsc = ctx.createOscillator();
+    const dongGain = ctx.createGain();
+    dongOsc.type = 'sine';
+    dongOsc.frequency.setValueAtTime(587.33, dongTime);
+
+    // Pastki chuqur rezonans (mayin gong sadosi)
+    const dongHarmonic = ctx.createOscillator();
+    const dongHarmonicGain = ctx.createGain();
+    dongHarmonic.type = 'sine';
+    dongHarmonic.frequency.setValueAtTime(1174.66, dongTime);
+
+    dongGain.gain.setValueAtTime(0, dongTime);
+    dongGain.gain.linearRampToValueAtTime(0.85, dongTime + 0.02);
+    dongGain.gain.exponentialRampToValueAtTime(0.0001, dongTime + 1.25);
+
+    dongHarmonicGain.gain.setValueAtTime(0, dongTime);
+    dongHarmonicGain.gain.linearRampToValueAtTime(0.18, dongTime + 0.015);
+    dongHarmonicGain.gain.exponentialRampToValueAtTime(0.0001, dongTime + 0.6);
+
+    dongOsc.connect(dongGain);
+    dongHarmonic.connect(dongHarmonicGain);
+    dongGain.connect(masterGain);
+    dongHarmonicGain.connect(masterGain);
+
+    dongOsc.start(dongTime);
+    dongHarmonic.start(dongTime);
+    dongOsc.stop(dongTime + 1.25);
+    dongHarmonic.stop(dongTime + 0.6);
 
   } catch (err) {
     console.warn('Audio chime play error:', err);
@@ -117,40 +164,8 @@ export function playPrintSound() {
 }
 
 /**
- * Text to speech announcement in Uzbek / phonetic fallback
+ * Text to speech announcement (Ovozli xabar foydalanuvchi talabiga ko'ra o'chirildi, faqat 1 marta ding-dong chime yetarli)
  */
-export function announceTicket(ticketNumber, windowNumber) {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-
-  try {
-    // Cancel any hanging or previous utterances to prevent browser freezing
-    window.speechSynthesis.cancel();
-
-    // Natural Uzbek phrasing
-    const message = `${ticketNumber} raqamli mijoz, ${windowNumber}-oynaga marhamat!`;
-    
-    const utterance = new SpeechSynthesisUtterance(message);
-    utterance.rate = 0.95;
-    utterance.pitch = 1.05;
-
-    // Look for uz-UZ or tr-TR or ru-RU voices if available
-    const voices = window.speechSynthesis.getVoices();
-    const suitableVoice = voices.find(
-      (v) => v.lang.startsWith('uz') || v.lang.startsWith('tr') || v.lang.startsWith('ru')
-    );
-    if (suitableVoice) {
-      utterance.voice = suitableVoice;
-    }
-
-    // Delay slightly after the chime finishes
-    setTimeout(() => {
-      try {
-        window.speechSynthesis.speak(utterance);
-      } catch (err) {
-        console.warn('SpeechSynthesis speak error:', err);
-      }
-    }, 500);
-  } catch (e) {
-    console.warn('Speech error:', e);
-  }
+export function announceTicket() {
+  return;
 }

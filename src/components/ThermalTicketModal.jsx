@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Printer, CheckCircle2, Clock, Users, X, Share2 } from 'lucide-react';
 
-export function ThermalTicketModal({ ticketData, onClose }) {
+export function ThermalTicketModal({ ticketData, onClose, lang = 'uz' }) {
   const [autoCloseSeconds, setAutoCloseSeconds] = useState(10);
 
   useEffect(() => {
@@ -61,29 +61,53 @@ export function ThermalTicketModal({ ticketData, onClose }) {
           {/* Header */}
           <div className="text-center border-b border-dashed border-slate-400 pb-3 mb-3">
             <div className="font-extrabold text-sm uppercase tracking-wide text-slate-900">
-              {branch.name}
+              {lang === 'uz' ? (branch.name || 'Markaziy Bosh Filial') : 'Центральный Главный Филиал'}
             </div>
-            <div className="text-[11px] text-slate-600 mt-0.5">{branch.address}</div>
+            <div className="text-[11px] text-slate-600 mt-0.5">
+              {lang === 'uz' ? (branch.address || 'Amir Temur shoh ko‘chasi, 1-uy') : 'ул. Амира Темура, 1'}
+            </div>
             <div className="text-[10px] text-slate-500 mt-0.5 font-bold">
-              ELEKTRON NAVBAT TIZIMI
+              {lang === 'uz' ? 'ELEKTRON NAVBAT TIZIMI' : 'ЭЛЕКТРОННАЯ СИСТЕМА ОЧЕРЕДИ'}
             </div>
           </div>
 
           {/* Ticket Number */}
           <div className="text-center my-4 py-2 bg-slate-50 rounded-lg border border-slate-200">
             <div className="text-xs text-slate-500 uppercase tracking-widest font-semibold">
-              Sizning navbatingiz
+              {lang === 'uz' ? 'Sizning navbatingiz' : 'Ваш номер очереди'}
             </div>
             <div className="text-5xl font-extrabold tracking-tight text-emerald-950 my-1 font-sans">
               {ticket.ticketNumber}
             </div>
             <div className="text-xs font-bold text-emerald-800 px-2 line-clamp-1">
-              {service.name}
+              {lang === 'uz'
+                ? service.name
+                : (service.id === 'srv-accounting' ? 'Бухгалтерия и юр. лица' : 'Банковские услуги')}
             </div>
-            {ticket.clientIdentifier && (
-              <div className="text-[11px] font-extrabold text-slate-800 mt-1 border-t border-slate-200 pt-1">
-                Mijoz: {ticket.clientIdentifier}
-                {ticket.clientPhone && <span className="block text-[10px] text-slate-500">{ticket.clientPhone}</span>}
+            {/* Section 10: Anonim Sodiqlik QR va Referral Kod */}
+            {(ticket.customerCode || ticket.referralCode) && (
+              <div className="mt-2 pt-2 border-t border-dashed border-slate-300 text-[10px] space-y-1 bg-emerald-50/60 p-2 rounded-lg">
+                {ticket.customerCode && (
+                  <div className="flex justify-between items-center text-emerald-950 font-bold">
+                    <span>{lang === 'uz' ? 'Sodiqlik QR-kod:' : 'Код лояльности:'}</span>
+                    <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-emerald-300">
+                      {ticket.customerCode}
+                    </span>
+                  </div>
+                )}
+                {ticket.referralCode && (
+                  <div className="flex justify-between items-center text-emerald-900 font-bold">
+                    <span>{lang === 'uz' ? 'Do‘stga ulashish:' : 'Промокод друга:'}</span>
+                    <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-emerald-300">
+                      {ticket.referralCode}
+                    </span>
+                  </div>
+                )}
+                <div className="text-[9px] text-slate-500 text-center mt-1">
+                  {lang === 'uz'
+                    ? 'Keyingi tashrifda 5%-15% chegirma yoki do‘stga bonus beradi'
+                    : 'Скидка 5%-15% при следующем визите или бонус другу'}
+                </div>
               </div>
             )}
           </div>
@@ -91,23 +115,23 @@ export function ThermalTicketModal({ ticketData, onClose }) {
           {/* Details */}
           <div className="space-y-1.5 text-xs border-b border-dashed border-slate-400 pb-3 mb-3 text-slate-800">
             <div className="flex justify-between items-center">
-              <span className="text-slate-600">Sana & Vaqt:</span>
+              <span className="text-slate-600">{lang === 'uz' ? 'Sana & Vaqt:' : 'Дата и время:'}</span>
               <span className="font-bold">{formattedDate} {formattedTime}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-600 flex items-center gap-1">
-                <Users className="w-3.5 h-3.5" /> Sizdan oldin:
+                <Users className="w-3.5 h-3.5" /> {lang === 'uz' ? 'Sizdan oldin:' : 'Впереди вас:'}
               </span>
               <span className="font-bold bg-slate-200 px-1.5 py-0.5 rounded text-slate-900">
-                {waitingAhead} kishi
+                {waitingAhead} {lang === 'uz' ? 'kishi' : 'чел.'}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-600 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" /> Taxminiy kutish:
+                <Clock className="w-3.5 h-3.5" /> {lang === 'uz' ? 'Taxminiy kutish:' : 'Ожидание:'}
               </span>
               <span className="font-bold text-emerald-800">
-                ~{estWaitTimeMin} daqiqa
+                ~{estWaitTimeMin} {lang === 'uz' ? 'daqiqa' : 'мин.'}
               </span>
             </div>
           </div>
@@ -130,7 +154,9 @@ export function ThermalTicketModal({ ticketData, onClose }) {
               *{ticket.ticketNumber}*
             </div>
             <p className="text-[10px] text-slate-600 leading-tight">
-              Iltimos, navbat raqamingiz katta monitorda chaqirilishini kuting!
+              {lang === 'uz'
+                ? 'Iltimos, navbat raqamingiz katta monitorda chaqirilishini kuting!'
+                : 'Пожалуйста, ожидайте вызова вашего номера на главном табло!'}
             </p>
           </div>
         </div>
@@ -142,14 +168,14 @@ export function ThermalTicketModal({ ticketData, onClose }) {
             className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium text-sm transition-all shadow-lg active:scale-95 cursor-pointer"
           >
             <Printer className="w-4 h-4" />
-            Xprinter Chop etish
+            {lang === 'uz' ? 'Xprinter Chop etish' : 'Печать талона'}
           </button>
           <button
             onClick={onClose}
             className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-medium text-sm transition-all flex items-center gap-1 cursor-pointer"
           >
             <X className="w-4 h-4" />
-            Yopish ({autoCloseSeconds}s)
+            {lang === 'uz' ? `Yopish (${autoCloseSeconds}s)` : `Закрыть (${autoCloseSeconds}с)`}
           </button>
         </div>
 
