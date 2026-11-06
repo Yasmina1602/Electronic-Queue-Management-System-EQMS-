@@ -471,40 +471,40 @@ export function StaffView({ onNavigateHome }) {
                 </div>
 
                 {/* Hotkeys Quick Helper Bar */}
-                <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 mb-4 rounded-xl bg-[#080d1a] border border-slate-800/80 text-[11px] text-slate-400">
-                  <div className="flex items-center gap-1.5 text-cyan-400 font-semibold">
-                    <Sparkles className="w-3.5 h-3.5" />
+                <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 mb-4 rounded-xl bg-emerald-50/80 border border-emerald-200 text-[11px] text-emerald-900">
+                  <div className="flex items-center gap-1.5 text-emerald-800 font-bold">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
                     <span>Tezkor tugmalar (Hotkeys):</span>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 text-[10px]">
+                  <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-600">
                     <span className="inline-flex items-center gap-1">
-                      <kbd className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold border border-emerald-500/30">F2</kbd>
-                      <span>Keyingi</span>
+                      <kbd className="px-1.5 py-0.5 rounded bg-white text-emerald-950 font-mono font-bold border border-emerald-300 shadow-xs">F2</kbd>
+                      <span className="font-medium">Keyingi</span>
                     </span>
-                    <span className="text-slate-600">•</span>
+                    <span className="text-emerald-300">•</span>
                     <span className="inline-flex items-center gap-1">
-                      <kbd className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono font-bold border border-amber-500/30">F3</kbd>
-                      <span>Qayta</span>
+                      <kbd className="px-1.5 py-0.5 rounded bg-white text-emerald-950 font-mono font-bold border border-emerald-300 shadow-xs">F3</kbd>
+                      <span className="font-medium">Qayta</span>
                     </span>
-                    <span className="text-slate-600">•</span>
+                    <span className="text-emerald-300">•</span>
                     <span className="inline-flex items-center gap-1">
-                      <kbd className="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono font-bold border border-rose-500/30">F4</kbd>
-                      <span>Yakunlash</span>
+                      <kbd className="px-1.5 py-0.5 rounded bg-white text-emerald-950 font-mono font-bold border border-emerald-300 shadow-xs">F4</kbd>
+                      <span className="font-medium">Yakunlash</span>
                     </span>
-                    <span className="text-slate-600">•</span>
+                    <span className="text-emerald-300">•</span>
                     <span className="inline-flex items-center gap-1">
-                      <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono font-bold border border-slate-700">F7</kbd>
-                      <span>Yo‘naltirish</span>
+                      <kbd className="px-1.5 py-0.5 rounded bg-white text-emerald-950 font-mono font-bold border border-emerald-300 shadow-xs">F7</kbd>
+                      <span className="font-medium">Yo‘naltirish</span>
                     </span>
-                    <span className="text-slate-600">•</span>
+                    <span className="text-emerald-300">•</span>
                     <span className="inline-flex items-center gap-1">
-                      <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono font-bold border border-slate-700">F8</kbd>
-                      <span>Kelmadi</span>
+                      <kbd className="px-1.5 py-0.5 rounded bg-white text-emerald-950 font-mono font-bold border border-emerald-300 shadow-xs">F8</kbd>
+                      <span className="font-medium">Kelmadi</span>
                     </span>
-                    <span className="text-slate-600">•</span>
+                    <span className="text-emerald-300">•</span>
                     <span className="inline-flex items-center gap-1">
-                      <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono font-bold border border-slate-700">F9</kbd>
-                      <span>Tanaffus</span>
+                      <kbd className="px-1.5 py-0.5 rounded bg-white text-emerald-950 font-mono font-bold border border-emerald-300 shadow-xs">F9</kbd>
+                      <span className="font-medium">Tanaffus</span>
                     </span>
                   </div>
                 </div>
@@ -610,10 +610,10 @@ export function StaffView({ onNavigateHome }) {
                     <button
                       onClick={() => setShowTransferModal(true)}
                       disabled={!activeTicket}
-                      className="w-full bg-[#1e293b] hover:bg-[#334155] border border-slate-700 text-slate-200 font-bold text-xs sm:text-sm py-2.5 px-4 rounded-xl flex items-center justify-between shadow-md transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
+                      className="w-full bg-emerald-50 hover:bg-emerald-100 border-2 border-emerald-300 text-emerald-950 font-bold text-xs sm:text-sm py-2.5 px-4 rounded-xl flex items-center justify-between shadow-xs transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
                     >
                       <span>Yuborish/Yo‘naltirish (F7)</span>
-                      <Share2 className="w-4 h-4" />
+                      <Share2 className="w-4 h-4 text-emerald-700" />
                     </button>
 
                     {/* Sub-actions */}
@@ -621,13 +621,13 @@ export function StaffView({ onNavigateHome }) {
                       <button
                         onClick={handleMarkNoShow}
                         disabled={!activeTicket}
-                        className="py-2 rounded-xl bg-slate-900 hover:bg-red-500/20 text-slate-300 hover:text-red-300 text-xs font-semibold border border-slate-800 transition-colors cursor-pointer disabled:opacity-40"
+                        className="py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs border border-rose-200 transition-colors cursor-pointer disabled:opacity-40"
                       >
                         Kelmadi (F8)
                       </button>
                       <button
                         onClick={handleToggleBreak}
-                        className="py-2 rounded-xl bg-slate-900 hover:bg-amber-500/20 text-slate-300 hover:text-amber-300 text-xs font-semibold border border-slate-800 transition-colors cursor-pointer"
+                        className="py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs border border-amber-200 transition-colors cursor-pointer"
                       >
                         Tanaffus (F9)
                       </button>
@@ -804,42 +804,42 @@ export function StaffView({ onNavigateHome }) {
 
         {/* VIEW 2: Operator History Tab (matching Clock Icon) */}
         {activeTab === 'history' && (
-          <div className="bg-[#111a33] border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div className="bg-white border-2 border-emerald-200 rounded-3xl p-6 shadow-xl space-y-4 w-full animate-fade-in">
+            <div className="flex items-center justify-between border-b border-emerald-100 pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-600/20 text-blue-400 flex items-center justify-center">
+                <div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center justify-center">
                   <History className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white">Qabul Tarixi — {currentStaff.name}</h3>
-                  <p className="text-xs text-slate-400">Bugungi xizmat ko‘rsatilgan va bekor qilingan mijozlar ro‘yxati</p>
+                  <h3 className="text-lg font-black text-emerald-950">Qabul Tarixi — {currentStaff.name}</h3>
+                  <p className="text-xs text-slate-500">Bugungi xizmat ko‘rsatilgan va bekor qilingan mijozlar ro‘yxati</p>
                 </div>
               </div>
               <button
                 onClick={() => setActiveTab('workspace')}
-                className="px-3 py-1.5 rounded-xl bg-slate-800 text-xs text-slate-300 hover:text-white cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-bold transition-all cursor-pointer"
               >
                 ← Ish stoliga qaytish
               </button>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-2xl border border-emerald-200">
               <table className="w-full text-left text-xs">
-                <thead className="bg-[#0b1224] text-slate-400 uppercase text-[11px]">
+                <thead className="bg-emerald-950 text-white uppercase text-[11px] tracking-wider">
                   <tr>
-                    <th className="p-3">Raqam</th>
-                    <th className="p-3">Mijoz ID</th>
-                    <th className="p-3">Xizmat</th>
-                    <th className="p-3">Holat</th>
-                    <th className="p-3">Chaqirilgan</th>
-                    <th className="p-3">Yakunlangan</th>
-                    <th className="p-3 text-right">Davomiyligi</th>
+                    <th className="p-3.5">Raqam</th>
+                    <th className="p-3.5">Mijoz ID</th>
+                    <th className="p-3.5">Xizmat</th>
+                    <th className="p-3.5">Holat</th>
+                    <th className="p-3.5">Chaqirilgan</th>
+                    <th className="p-3.5">Yakunlangan</th>
+                    <th className="p-3.5 text-right">Davomiyligi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800 text-slate-300">
+                <tbody className="divide-y divide-emerald-100 text-slate-700 bg-white">
                   {operatorHistory.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="p-8 text-center text-slate-500">
+                      <td colSpan="7" className="p-8 text-center text-slate-500 font-medium">
                         Bugun hali yakunlangan xizmatlar mavjud emas.
                       </td>
                     </tr>
@@ -848,24 +848,24 @@ export function StaffView({ onNavigateHome }) {
                       const srv = services.find((s) => s.id === t.serviceId);
                       const duration = t.completedAt && t.startedAt ? Math.round((t.completedAt - t.startedAt) / 60000) : 6;
                       return (
-                        <tr key={t.id} className="hover:bg-slate-800/40">
-                          <td className="p-3 font-bold text-cyan-400">{t.ticketNumber}</td>
-                          <td className="p-3 text-slate-300">{t.clientIdentifier || 'Mijoz'}</td>
-                          <td className="p-3 text-slate-300">{srv?.name}</td>
-                          <td className="p-3">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              t.status === TICKET_STATUS.COMPLETED ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'
+                        <tr key={t.id} className="hover:bg-emerald-50/60 transition-colors">
+                          <td className="p-3.5 font-black text-emerald-950">{t.ticketNumber}</td>
+                          <td className="p-3.5 text-slate-800 font-semibold">{t.clientIdentifier || 'Mijoz'}</td>
+                          <td className="p-3.5 text-slate-700">{srv?.name}</td>
+                          <td className="p-3.5">
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black ${
+                              t.status === TICKET_STATUS.COMPLETED ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-700 border border-rose-300'
                             }`}>
                               {t.status}
                             </span>
                           </td>
-                          <td className="p-3 font-mono text-slate-400">
+                          <td className="p-3.5 font-mono text-slate-600">
                             {t.calledAt ? new Date(t.calledAt).toLocaleTimeString('uz-UZ') : '—'}
                           </td>
-                          <td className="p-3 font-mono text-slate-400">
+                          <td className="p-3.5 font-mono text-slate-600">
                             {t.completedAt ? new Date(t.completedAt).toLocaleTimeString('uz-UZ') : '—'}
                           </td>
-                          <td className="p-3 text-right font-mono text-white">~{duration} daqiqa</td>
+                          <td className="p-3.5 text-right font-mono font-bold text-emerald-950">~{duration} daqiqa</td>
                         </tr>
                       );
                     })
@@ -878,20 +878,20 @@ export function StaffView({ onNavigateHome }) {
 
         {/* VIEW 3: Settings Tab (matching Gear Icon) */}
         {activeTab === 'settings' && (
-          <div className="bg-[#111a33] border border-slate-800 rounded-3xl p-6 shadow-xl space-y-6 max-w-3xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div className="bg-white border-2 border-emerald-200 rounded-3xl p-6 shadow-xl space-y-6 w-full animate-fade-in">
+            <div className="flex items-center justify-between border-b border-emerald-100 pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-600/20 text-purple-400 flex items-center justify-center">
+                <div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center justify-center">
                   <Settings className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white">Operator Ish Stoli Sozlamalari</h3>
-                  <p className="text-xs text-slate-400">Qulaylik, xabarnomalar va tezkor klaviatura tugmalari</p>
+                  <h3 className="text-lg font-black text-emerald-950">Operator Ish Stoli Sozlamalari</h3>
+                  <p className="text-xs text-slate-500">Qulaylik, xabarnomalar va tezkor klaviatura tugmalari</p>
                 </div>
               </div>
               <button
                 onClick={() => setActiveTab('workspace')}
-                className="px-3 py-1.5 rounded-xl bg-slate-800 text-xs text-slate-300 hover:text-white cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-bold transition-all cursor-pointer"
               >
                 ← Ish stoliga qaytish
               </button>
@@ -899,41 +899,40 @@ export function StaffView({ onNavigateHome }) {
 
             <div className="space-y-4 text-xs">
               {/* Hotkeys */}
-              <div className="p-4 rounded-2xl bg-[#0b1224] border border-slate-800 flex items-center justify-between">
+              <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50/60 border border-emerald-200 flex items-center justify-between">
                 <div>
-                  <div className="font-bold text-white text-sm">Tezkor Klaviatura Tugmalari (Hotkeys)</div>
-                  <div className="text-slate-400 text-[11px] mt-0.5 leading-relaxed">
-                    <strong>F2:</strong> Keyingi | <strong>F3:</strong> Qayta | <strong>F4:</strong> Boshlash/Yakunlash | <strong>F7:</strong> Yo‘naltirish | <strong>F8:</strong> Kelmadi | <strong>F9:</strong> Tanaffus | <strong>Esc:</strong> Bekor qilish
+                  <div className="font-extrabold text-emerald-950 text-sm">Tezkor Klaviatura Tugmalari (Hotkeys)</div>
+                  <div className="text-slate-600 text-[11px] mt-1 leading-relaxed">
+                    <strong className="text-emerald-900">F2:</strong> Keyingi | <strong className="text-emerald-900">F3:</strong> Qayta | <strong className="text-emerald-900">F4:</strong> Boshlash/Yakunlash | <strong className="text-emerald-900">F7:</strong> Yo‘naltirish | <strong className="text-emerald-900">F8:</strong> Kelmadi | <strong className="text-emerald-900">F9:</strong> Tanaffus | <strong className="text-emerald-900">Esc:</strong> Bekor qilish
                   </div>
                 </div>
                 <button
                   onClick={() => setEnableHotkeys(!enableHotkeys)}
-                  className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
-                    enableHotkeys ? 'bg-cyan-500' : 'bg-slate-700'
+                  className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
+                    enableHotkeys ? 'bg-emerald-800' : 'bg-slate-300'
                   }`}
                 >
-                  <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${enableHotkeys ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                  <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${enableHotkeys ? 'translate-x-6' : 'translate-x-0'}`}></div>
                 </button>
               </div>
 
               {/* Auto call next */}
-              <div className="p-4 rounded-2xl bg-[#0b1224] border border-slate-800 flex items-center justify-between">
+              <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50/60 border border-emerald-200 flex items-center justify-between">
                 <div>
-                  <div className="font-bold text-white text-sm">Avtomatik Keyingi Mijozga O‘tish</div>
-                  <div className="text-slate-400 text-[11px] mt-0.5">
+                  <div className="font-extrabold text-emerald-950 text-sm">Avtomatik Keyingi Mijozga O‘tish</div>
+                  <div className="text-slate-600 text-[11px] mt-1">
                     Xizmat yakunlangach 5 soniyadan so‘ng navbatdagi mijoz avtomatik chaqiriladi
                   </div>
                 </div>
                 <button
                   onClick={() => setAutoCallNext(!autoCallNext)}
-                  className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
-                    autoCallNext ? 'bg-cyan-500' : 'bg-slate-700'
+                  className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
+                    autoCallNext ? 'bg-emerald-800' : 'bg-slate-300'
                   }`}
                 >
-                  <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${autoCallNext ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                  <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${autoCallNext ? 'translate-x-6' : 'translate-x-0'}`}></div>
                 </button>
               </div>
-
 
             </div>
           </div>
@@ -941,45 +940,45 @@ export function StaffView({ onNavigateHome }) {
 
         {/* VIEW 4: Personal Analytics Tab (matching BarChart Icon) */}
         {activeTab === 'analytics' && (
-          <div className="bg-[#111a33] border border-slate-800 rounded-3xl p-6 shadow-xl space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div className="bg-white border-2 border-emerald-200 rounded-3xl p-6 shadow-xl space-y-6 w-full animate-fade-in">
+            <div className="flex items-center justify-between border-b border-emerald-100 pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-cyan-600/20 text-cyan-400 flex items-center justify-center">
+                <div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center justify-center">
                   <BarChart2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white">Shaxsiy Samaradorlik (KPI) — {currentStaff.name}</h3>
-                  <p className="text-xs text-slate-400">Oyna: {currentStaff.windowNumber} | Bugungi unumdorlik</p>
+                  <h3 className="text-lg font-black text-emerald-950">Shaxsiy Samaradorlik (KPI) — {currentStaff.name}</h3>
+                  <p className="text-xs text-slate-500">Oyna: {currentStaff.windowNumber} | Bugungi unumdorlik</p>
                 </div>
               </div>
               <button
                 onClick={() => setActiveTab('workspace')}
-                className="px-3 py-1.5 rounded-xl bg-slate-800 text-xs text-slate-300 hover:text-white cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-bold transition-all cursor-pointer"
               >
                 ← Ish stoliga qaytish
               </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-              <div className="bg-[#0b1224] p-4 rounded-2xl border border-slate-800 text-center">
-                <div className="text-xs text-slate-400">Qabul Qilinganlar</div>
-                <div className="text-3xl font-black text-white my-1">{currentStaff.servedCountToday || 42}</div>
-                <div className="text-[10px] text-emerald-400">Reja: 40 ta (Bajarildi 105%)</div>
+              <div className="bg-emerald-50/60 p-5 rounded-2xl border-2 border-emerald-200 text-center shadow-xs">
+                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Qabul Qilinganlar</div>
+                <div className="text-3xl font-black text-emerald-950 my-1">{currentStaff.servedCountToday || 42}</div>
+                <div className="text-[11px] font-bold text-emerald-700">Reja: 40 ta (Bajarildi 105%)</div>
               </div>
-              <div className="bg-[#0b1224] p-4 rounded-2xl border border-slate-800 text-center">
-                <div className="text-xs text-slate-400">O‘rtacha Xizmat Vaqti</div>
-                <div className="text-3xl font-black text-cyan-400 my-1">8:30</div>
-                <div className="text-[10px] text-slate-400">Standart: 10:00 daqiqa</div>
+              <div className="bg-emerald-50/60 p-5 rounded-2xl border-2 border-emerald-200 text-center shadow-xs">
+                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">O‘rtacha Xizmat Vaqti</div>
+                <div className="text-3xl font-black text-emerald-800 my-1">8:30</div>
+                <div className="text-[11px] font-medium text-slate-500">Standart: 10:00 daqiqa</div>
               </div>
-              <div className="bg-[#0b1224] p-4 rounded-2xl border border-slate-800 text-center">
-                <div className="text-xs text-slate-400">Mijozlar Bahosi</div>
-                <div className="text-3xl font-black text-amber-400 my-1">4.9 / 5</div>
-                <div className="text-[10px] text-slate-400">38 ta ijobiy fikr</div>
+              <div className="bg-emerald-50/60 p-5 rounded-2xl border-2 border-emerald-200 text-center shadow-xs">
+                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Mijozlar Bahosi</div>
+                <div className="text-3xl font-black text-amber-600 my-1">4.9 / 5</div>
+                <div className="text-[11px] font-medium text-slate-500">38 ta ijobiy fikr</div>
               </div>
-              <div className="bg-[#0b1224] p-4 rounded-2xl border border-slate-800 text-center">
-                <div className="text-xs text-slate-400">Kelmadi (No-Show)</div>
-                <div className="text-3xl font-black text-slate-300 my-1">{currentStaff.noShowCountToday || 0}</div>
-                <div className="text-[10px] text-emerald-400">Me’yorda (&lt;3 ta)</div>
+              <div className="bg-emerald-50/60 p-5 rounded-2xl border-2 border-emerald-200 text-center shadow-xs">
+                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Kelmadi (No-Show)</div>
+                <div className="text-3xl font-black text-rose-600 my-1">{currentStaff.noShowCountToday || 0}</div>
+                <div className="text-[11px] font-bold text-emerald-700">Me’yorda (&lt;3 ta)</div>
               </div>
             </div>
           </div>
@@ -989,10 +988,12 @@ export function StaffView({ onNavigateHome }) {
 
       {/* Break Reason Modal */}
       {showBreakModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
-            <h4 className="text-base font-bold text-white flex items-center gap-2">
-              <Coffee className="w-5 h-5 text-amber-400" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-emerald-950/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white border-2 border-emerald-300 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+            <h4 className="text-base font-black text-emerald-950 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
+                <Coffee className="w-4 h-4" />
+              </div>
               Tanaffus sababini tanlang
             </h4>
             <div className="space-y-2">
@@ -1000,10 +1001,10 @@ export function StaffView({ onNavigateHome }) {
                 <button
                   key={r}
                   onClick={() => setBreakReason(r)}
-                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                     breakReason === r
-                      ? 'bg-amber-500/20 border-amber-500 text-amber-300'
-                      : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                      ? 'bg-amber-100 border-amber-400 text-amber-900 shadow-xs'
+                      : 'bg-emerald-50/60 border-emerald-200 text-emerald-950 hover:bg-emerald-100'
                   }`}
                 >
                   {r}
@@ -1013,13 +1014,13 @@ export function StaffView({ onNavigateHome }) {
             <div className="flex gap-2 pt-2">
               <button
                 onClick={confirmBreak}
-                className="flex-1 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-xl text-xs transition-all cursor-pointer"
+                className="flex-1 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs transition-all cursor-pointer shadow-md"
               >
                 Tanaffusga chiqish
               </button>
               <button
                 onClick={() => setShowBreakModal(false)}
-                className="px-4 py-2.5 bg-slate-800 text-slate-300 rounded-xl text-xs cursor-pointer"
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
               >
                 Bekor qilish
               </button>
@@ -1030,10 +1031,12 @@ export function StaffView({ onNavigateHome }) {
 
       {/* Transfer Modal */}
       {showTransferModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
-            <h4 className="text-base font-bold text-white flex items-center gap-2">
-              <Share2 className="w-5 h-5 text-cyan-400" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-emerald-950/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white border-2 border-emerald-300 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+            <h4 className="text-base font-black text-emerald-950 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
+                <Share2 className="w-4 h-4" />
+              </div>
               Boshqa xizmatga yo‘naltirish
             </h4>
             <div className="space-y-2 max-h-56 overflow-y-auto">
@@ -1041,10 +1044,10 @@ export function StaffView({ onNavigateHome }) {
                 <button
                   key={srv.id}
                   onClick={() => setSelectedTransferService(srv.id)}
-                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                     selectedTransferService === srv.id
-                      ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300'
-                      : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                      ? 'bg-emerald-100 border-emerald-500 text-emerald-950 shadow-xs'
+                      : 'bg-emerald-50/60 border-emerald-200 text-emerald-950 hover:bg-emerald-100'
                   }`}
                 >
                   {srv.name} ({srv.prefix})
@@ -1060,13 +1063,13 @@ export function StaffView({ onNavigateHome }) {
                   }
                 }}
                 disabled={!selectedTransferService}
-                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl text-xs disabled:opacity-40 cursor-pointer"
+                className="flex-1 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white font-bold rounded-xl text-xs disabled:opacity-40 cursor-pointer shadow-md"
               >
                 Yo‘naltirish
               </button>
               <button
                 onClick={() => setShowTransferModal(false)}
-                className="px-4 py-2.5 bg-slate-800 text-slate-300 rounded-xl text-xs cursor-pointer"
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
               >
                 Bekor qilish
               </button>
