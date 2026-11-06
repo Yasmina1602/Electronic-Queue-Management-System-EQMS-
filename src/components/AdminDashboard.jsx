@@ -7,6 +7,7 @@ import {
   Clock,
   Layers,
   UserPlus,
+  PlusCircle,
   RefreshCw,
   Trash2,
   TrendingUp,
@@ -48,6 +49,7 @@ export function AdminDashboard() {
     updateStaff,
     createBranch,
     updateBranch,
+    addService,
     updateService,
     resetToDemo,
     clearQueue,
@@ -102,6 +104,13 @@ export function AdminDashboard() {
   const [editServicePrefix, setEditServicePrefix] = useState('');
   const [editServiceDescription, setEditServiceDescription] = useState('');
   const [editServiceActive, setEditServiceActive] = useState(true);
+
+  // Form state for adding new service/department (Talab: bo'limlar oynasiga "bo'lim qo'shish" tugmasini qo'sh)
+  const [showAddServiceModal, setShowAddServiceModal] = useState(false);
+  const [newServiceName, setNewServiceName] = useState('');
+  const [newServicePrefix, setNewServicePrefix] = useState('');
+  const [newServiceDescription, setNewServiceDescription] = useState('');
+  const [newServiceActive, setNewServiceActive] = useState(true);
 
   const currentBranch = branches.find((b) => b.id === activeBranchId) || branches[0];
   const branchTickets = tickets.filter((t) => (t.branchId || t.branch_id || 'branch-1') === (activeBranchId || 'branch-1'));
@@ -278,6 +287,41 @@ export function AdminDashboard() {
     }
   };
 
+  // Open Add Service Modal (Yangi bo'lim qo'shish)
+  const openAddServiceModal = () => {
+    setNewServiceName('');
+    setNewServicePrefix('');
+    setNewServiceDescription('');
+    setNewServiceActive(true);
+    setShowAddServiceModal(true);
+  };
+
+  // Add Service Submit
+  const handleAddServiceSubmit = async (e) => {
+    e.preventDefault();
+    if (!newServiceName.trim() || !newServicePrefix.trim()) return;
+
+    const res = await addService({
+      name: newServiceName.trim(),
+      prefix: newServicePrefix.trim().toUpperCase(),
+      description: newServiceDescription.trim(),
+      avgDurationMin: 10,
+      active: newServiceActive,
+    });
+
+    if (res?.success) {
+      setNotification(`"${newServiceName}" yangi bo‘limi muvaffaqiyatli qo‘shildi va Kioskda aks ettirildi!`);
+      setTimeout(() => setNotification(null), 3500);
+      setShowAddServiceModal(false);
+      setNewServiceName('');
+      setNewServicePrefix('');
+      setNewServiceDescription('');
+    } else {
+      setNotification(res?.error || 'Bo‘lim qo‘shishda xatolik yuz berdi!');
+      setTimeout(() => setNotification(null), 4000);
+    }
+  };
+
   // Approve request handler
   const handleApprove = (reqId) => {
     const res = approveStaffRequest(reqId);
@@ -333,76 +377,6 @@ export function AdminDashboard() {
                 <span>{isSuperAdmin ? 'Superadmin Boshqaruvi' : 'Admin Boshqaruvi'}</span>
               </div>
             </div>
-          </div>
-
-          {/* Oynalarga kirish tugmalari (Panelning tagida: Xodimlar, Administratorlar, Bo'limlar) */}
-          <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-emerald-100">
-            <button
-              onClick={() => setActiveTab('STAFF')}
-              className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
-                activeTab === 'STAFF'
-                  ? 'bg-emerald-800 text-white shadow-md shadow-emerald-900/20 scale-[1.02]'
-                  : 'bg-emerald-50/80 text-emerald-950 border border-emerald-200 hover:bg-emerald-100'
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              <span>Xodimlar</span>
-              <span
-                className={`px-2 py-0.5 rounded-full text-[11px] font-mono ${
-                  activeTab === 'STAFF'
-                    ? 'bg-emerald-950 text-emerald-200'
-                    : 'bg-white text-emerald-800 border border-emerald-200'
-                }`}
-              >
-                {regularStaff.length} nafar
-              </span>
-            </button>
-
-            {isSuperAdmin && (
-              <>
-                <button
-                  onClick={() => setActiveTab('ADMINS')}
-                  className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
-                    activeTab === 'ADMINS'
-                      ? 'bg-purple-800 text-white shadow-md shadow-purple-900/20 scale-[1.02]'
-                      : 'bg-purple-50/80 text-purple-950 border border-purple-200 hover:bg-purple-100'
-                  }`}
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>Administratorlar</span>
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[11px] font-mono ${
-                      activeTab === 'ADMINS'
-                        ? 'bg-purple-950 text-purple-200'
-                        : 'bg-white text-purple-800 border border-purple-200'
-                    }`}
-                  >
-                    {adminStaff.length} nafar
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('SERVICES')}
-                  className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
-                    activeTab === 'SERVICES'
-                      ? 'bg-teal-800 text-white shadow-md shadow-teal-900/20 scale-[1.02]'
-                      : 'bg-teal-50/80 text-teal-950 border border-teal-200 hover:bg-teal-100'
-                  }`}
-                >
-                  <Layers className="w-4 h-4" />
-                  <span>Bo‘limlar</span>
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[11px] font-mono ${
-                      activeTab === 'SERVICES'
-                        ? 'bg-teal-950 text-teal-200'
-                        : 'bg-white text-teal-800 border border-teal-200'
-                    }`}
-                  >
-                    {services.length} ta
-                  </span>
-                </button>
-              </>
-            )}
           </div>
         </div>
 
@@ -556,17 +530,6 @@ export function AdminDashboard() {
                 <option value="srv-general">Xizmatlar</option>
                 <option value="srv-accounting">Buxgalteriya</option>
               </select>
-
-              {/* Talab: "Xodim Qo‘shish" tugmasi oldida "Admin qo'shish" tugmasini qo'sh */}
-              {isSuperAdmin && (
-                <button
-                  onClick={() => handleOpenAddModal('ADMIN')}
-                  className="px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-extrabold text-xs shadow-md flex items-center gap-2 transition-all cursor-pointer hover:scale-[1.02] active:scale-95"
-                >
-                  <ShieldPlus className="w-4 h-4" />
-                  <span>Admin qo‘shish</span>
-                </button>
-              )}
 
               <button
                 onClick={() => handleOpenAddModal('STAFF')}
@@ -733,6 +696,76 @@ export function AdminDashboard() {
       </div>
     )}
 
+        {/* Oynalarga kirish tugmalari (Panelning tagida: Xodimlar, Administratorlar, Bo'limlar) */}
+        <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-emerald-100">
+          <button
+            onClick={() => setActiveTab('STAFF')}
+            className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+              activeTab === 'STAFF'
+                ? 'bg-emerald-800 text-white shadow-md shadow-emerald-900/20 scale-[1.02]'
+                : 'bg-emerald-50/80 text-emerald-950 border border-emerald-200 hover:bg-emerald-100'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Xodimlar</span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-[11px] font-mono ${
+                activeTab === 'STAFF'
+                  ? 'bg-emerald-950 text-emerald-200'
+                  : 'bg-white text-emerald-800 border border-emerald-200'
+              }`}
+            >
+              {regularStaff.length} nafar
+            </span>
+          </button>
+
+          {isSuperAdmin && (
+            <>
+              <button
+                onClick={() => setActiveTab('ADMINS')}
+                className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                  activeTab === 'ADMINS'
+                    ? 'bg-purple-800 text-white shadow-md shadow-purple-900/20 scale-[1.02]'
+                    : 'bg-purple-50/80 text-purple-950 border border-purple-200 hover:bg-purple-100'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>Administratorlar</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[11px] font-mono ${
+                    activeTab === 'ADMINS'
+                      ? 'bg-purple-950 text-purple-200'
+                      : 'bg-white text-purple-800 border border-purple-200'
+                  }`}
+                >
+                  {adminStaff.length} nafar
+                </span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('SERVICES')}
+                className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                  activeTab === 'SERVICES'
+                    ? 'bg-teal-800 text-white shadow-md shadow-teal-900/20 scale-[1.02]'
+                    : 'bg-teal-50/80 text-teal-950 border border-teal-200 hover:bg-teal-100'
+                }`}
+              >
+                <Layers className="w-4 h-4" />
+                <span>Bo‘limlar</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[11px] font-mono ${
+                    activeTab === 'SERVICES'
+                      ? 'bg-teal-950 text-teal-200'
+                      : 'bg-white text-teal-800 border border-teal-200'
+                  }`}
+                >
+                  {services.length} ta
+                </span>
+              </button>
+            </>
+          )}
+        </div>
+
         {/* 2. SUPERADMIN UCHUN ALOHIDA ADMINLAR OYNASI (Talab: tugma bosilsa shu oynalarga kirsin) */}
         {isSuperAdmin && activeTab === 'ADMINS' && (
           <div className="bg-white border-2 border-purple-200 rounded-3xl p-6 shadow-xl space-y-4 animate-fade-in">
@@ -879,6 +912,14 @@ export function AdminDashboard() {
                   Mijozlar planshet (kiosk) terminalida ko‘radigan bo‘limlar, chipta prefikslari va xizmat parametrlari
                 </p>
               </div>
+
+              <button
+                onClick={openAddServiceModal}
+                className="px-4 py-2 rounded-xl bg-teal-800 hover:bg-teal-900 text-white font-extrabold text-xs shadow-md flex items-center gap-2 transition-all cursor-pointer hover:scale-[1.02] active:scale-95"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>Bo‘lim qo‘shish</span>
+              </button>
             </div>
 
             {/* Bo'limlar Jadvali */}
@@ -1381,6 +1422,105 @@ export function AdminDashboard() {
                 >
                   <Check className="w-4 h-4" />
                   <span>Saqlash</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Yangi Bo'lim Qo'shish (Kiosk va Tizim uchun) */}
+      {showAddServiceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-teal-950/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border-4 border-teal-800 relative">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-teal-100 text-teal-800 flex items-center justify-center border border-teal-200">
+                  <PlusCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900">Yangi Bo‘lim Qo‘shish</h3>
+                  <p className="text-xs text-slate-500">Kiosk terminalida yangi xizmat bo‘limi yaratish</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddServiceModal(false)}
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-xl transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddServiceSubmit} className="space-y-4 text-xs font-bold text-slate-700">
+              <div>
+                <label className="block mb-1 text-slate-800 uppercase tracking-wider text-[11px]">
+                  Bo‘lim Nomi:
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Masalan: Kredit xizmatlari"
+                  value={newServiceName}
+                  onChange={(e) => setNewServiceName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-teal-700 text-slate-900 font-extrabold text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1 text-slate-800 uppercase tracking-wider text-[11px]">
+                  Chipta Prefiksi (K, X, B, ...):
+                </label>
+                <input
+                  type="text"
+                  required
+                  maxLength={4}
+                  placeholder="Masalan: K"
+                  value={newServicePrefix}
+                  onChange={(e) => setNewServicePrefix(e.target.value.toUpperCase())}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-teal-700 text-slate-900 font-mono font-black text-sm uppercase"
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1 text-slate-800 uppercase tracking-wider text-[11px]">
+                  Bo‘lim Tavsifi (Kioskda mijozga ko‘rinadi):
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Bo‘lim faoliyati haqida qisqacha ma'lumot..."
+                  value={newServiceDescription}
+                  onChange={(e) => setNewServiceDescription(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:border-teal-700 text-slate-900 font-normal text-xs resize-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="newServiceActiveCheck"
+                  checked={newServiceActive}
+                  onChange={(e) => setNewServiceActive(e.target.checked)}
+                  className="w-4 h-4 text-teal-700 rounded border-slate-300 focus:ring-teal-600 cursor-pointer"
+                />
+                <label htmlFor="newServiceActiveCheck" className="text-xs text-slate-800 cursor-pointer font-bold select-none">
+                  Kioskda ko‘rinsin (Faol holatda)
+                </label>
+              </div>
+
+              <div className="flex gap-3 pt-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setShowAddServiceModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold transition-all cursor-pointer"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-teal-800 hover:bg-teal-900 text-white font-extrabold shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Qo‘shish</span>
                 </button>
               </div>
             </form>

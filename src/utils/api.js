@@ -66,6 +66,7 @@ export const api = {
   createBranch: (payload) => request('/branches', { method: 'POST', body: JSON.stringify(payload) }),
   updateBranch: (branchId, payload) => request(`/branches/${branchId}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteBranch: (branchId) => request(`/branches/${branchId}`, { method: 'DELETE' }),
+  createService: (payload) => request('/services', { method: 'POST', body: JSON.stringify(payload) }),
   updateService: (serviceId, payload) => request(`/services/${serviceId}`, { method: 'PUT', body: JSON.stringify(payload) }),
   toggleService: (id) => request(`/services/${id}/toggle`, { method: 'PATCH' }),
 

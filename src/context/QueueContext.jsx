@@ -639,6 +639,34 @@ export function QueueProvider({ children }) {
     } catch (e) {}
   };
 
+  const addService = async (serviceData) => {
+    try {
+      const res = await api.createService(serviceData);
+      if (res.success && res.service) {
+        const formatted = {
+          ...res.service,
+          avgDurationMin: res.service.avg_duration_min || res.service.avgDurationMin || 10,
+        };
+        setServices((prev) => [...prev, formatted]);
+        syncWithBackend();
+        return { success: true, service: formatted };
+      }
+      return { success: false, error: res?.error || 'Bo‘lim qo‘shishda xatolik yuz berdi' };
+    } catch (e) {
+      console.warn('Backend addService error:', e);
+      const newSrv = {
+        id: `srv-${Date.now()}`,
+        name: serviceData.name,
+        prefix: serviceData.prefix,
+        description: serviceData.description || '',
+        avgDurationMin: serviceData.avgDurationMin || 10,
+        active: serviceData.active !== false,
+      };
+      setServices((prev) => [...prev, newSrv]);
+      return { success: true, service: newSrv };
+    }
+  };
+
   const updateService = async (serviceId, serviceData) => {
     try {
       const res = await api.updateService(serviceId, serviceData);
@@ -730,6 +758,7 @@ export function QueueProvider({ children }) {
         submitStaffRequest,
         approveStaffRequest,
         rejectStaffRequest,
+        addService,
         updateService,
         toggleServiceActive,
         resetToDemo,
