@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:all": "concurrently -k -n \"BACKEND,FRONTEND\" -c \"blue.bold,green.bold\" \"npm run backend:dev\" \"npm run dev\"",
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
+    "install:all": "npm install && npm --prefix backend install",
     "backend:dev": "node --watch backend/src/index.js",
     "backend:start": "node backend/src/index.js",
     "backend:seed": "node backend/src/database/seed.js",
@@ -26,6 +28,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "concurrently": "^9.2.5",
     "oxlint": "^1.89.0",
     "tailwindcss": "^4.3.3",
     "vite": "^8.3.5"

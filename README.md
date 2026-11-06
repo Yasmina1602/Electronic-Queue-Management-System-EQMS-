@@ -232,9 +232,10 @@ Loyihani kompyuteringizda noldan o‘rnatib ishga tushirish uchun quyidagi ketma
 ### 1-Qadam: Repozitoriyni klonlash
 Terminalni (yoki PowerShell) oching va loyihani yuklab oling:
 ```bash
-git clone https://github.com/your-username/elektron_navbat_tizimi.git
-cd elektron_navbat_tizimi
+git clone https://github.com/Yasmina1602/Electronic-Queue-Management-System-EQMS-.git
+cd Electronic-Queue-Management-System-EQMS-
 ```
+*(yoki muqobil manzil: `https://github.com/erateamIt/Electronic-Queue-Management-System-EQMS-.git`)*
 
 ---
 
@@ -248,68 +249,98 @@ CREATE DATABASE elektron_navbat_db;
 
 ---
 
-### 3-Qadam: Backendni O‘rnatish va Sozlash
+### 3-Qadam: Backend Sozlamalari (`.env`)
 
-1. Backend papkasiga kiring:
+1. Backend papkasiga kiring va `.env` faylini namunadan nusxalang:
 ```bash
 cd backend
-npm install
+
+# Windows (CMD / PowerShell):
+copy .env.example .env
+
+# Linux / macOS:
+cp .env.example .env
 ```
 
-2. `.env` faylini tekshiring (`backend/.env`):
+2. `.env` faylini ochib, agar PostgreSQL parolingiz `1234` dan farqli bo‘lsa, uni o‘zgartiring:
 ```env
 PORT=5000
 NODE_ENV=development
 
-# PostgreSQL ulanish parametrlari:
+# PostgreSQL ulanish manzili:
+DATABASE_URL=postgresql://postgres:1234@localhost:5432/elektron_navbat_db
+
+# Yoki alohida parametrlar ko‘rinishida:
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=elektron_navbat_db
 DB_USER=postgres
 DB_PASSWORD=1234
 
-# JWT xavfsizlik siri:
-JWT_SECRET=super_secret_jwt_key_qms_pro_2026_secure
-JWT_EXPIRES_IN=8h
+# JWT xavfsizlik kaliti va CORS:
+JWT_SECRET=super_secret_qms_production_token_jwt_2026_xyz
 CORS_ORIGIN=*
 ```
-*(Eslatma: Agar PostgreSQL parolingiz `1234` dan boshqa bo‘lsa, `DB_PASSWORD` qatoriga o‘zingizning parolingizni yozing).*
 
-3. Baza jadvallarini yaratish va boshlang‘ich ma’lumotlarni yuklash (Seeder):
+3. Asosiy papkaga qayting:
 ```bash
-npm run seed
+cd ..
 ```
-Bu buyruq barcha 15 ta jadvalni, rollarni, filiallarni, standart operatorlarni va xizmat bo‘limlarini avtomatik yaratadi.
-
-4. Backend serverni ishga tushiring:
-```bash
-npm run dev
-# yoki
-node src/index.js
-```
-Server `http://localhost:5000` manzilida faoliyat boshlaydi.
 
 ---
 
-### 4-Qadam: Frontendni O‘rnatish va Ishga Tushirish
+### 4-Qadam: Loyihani Ishga Tushirish
 
-Yangi terminal oynasini oching va loyihaning asosiy papkasiga o‘ting:
+Loyihani ishga tushirishning **2 xil qulay usuli** mavjud:
+
+#### ⚡ 1-USUL: Bitta buyruq bilan barchasini ishga tushirish (Tavsiya etiladi)
+
+Loyihaning asosiy papkasida (`Electronic-Queue-Management-System-EQMS-`) turib quyidagi buyruqlarni bering:
+
 ```bash
-cd ..
+# 1. Frontend va Backend kutubxonalarini bir yo‘la o‘rnatish:
+npm run install:all
+
+# 2. PostgreSQL bazasiga barcha 15 ta jadval va boshlang‘ich ma’lumotlarni yozish:
+npm run backend:seed
+
+# 3. Backend (5000-port) va Frontend (5173-port)ni bir vaqtda ishga tushirish:
+npm run dev:all
+```
+> [!TIP]
+> `npm run dev:all` buyrug‘i bitta terminal oynasida Express Server (`:5000`) va Vite Frontend (`:5173`) ni parallel yurgizadi!
+
+---
+
+#### 🛠️ 2-USUL: Alohida terminallarda ishga tushirish (Klassik usul)
+
+Agar server va foydalanuvchi interfeysini alohida konsollarda yuritmoqchi bo‘lsangiz:
+
+##### 🟢 1-Terminal — Backend Server:
+```bash
+cd backend
+npm install
+npm run seed
+npm run dev
+```
+*Backend API va WebSocket server `http://localhost:5000` manzilida ishlaydi.*
+
+##### 🔵 2-Terminal — Frontend Interfeysi:
+Yangi terminal oching va loyihaning asosiy (ildiz) papkasida ekanligingizni tekshirib quyidagini yozing:
+```bash
 npm install
 npm run dev
 ```
-
-Brauzerda ochiladi: **`http://localhost:5173`**
+*Vite Frontend ilovasi `http://localhost:5173` manzilida ishga tushadi.*
 
 ---
 
 ### 5-Qadam: Tizim Oynalarini Sinab Ko‘rish
 Brauzerda alohida varaqlarda (tab) ochib tizimni to‘liq sinashingiz mumkin:
-* **Mijozlar Kioski:** `http://localhost:5173/` (yoki `/kiosk`) — Chipta oling.
-* **Katta Zal Tablosi:** `http://localhost:5173/display` — TV monitori va musiqali chaqiruv.
-* **Tizimga Kirish:** `http://localhost:5173/login` — Login qilib boshqaruv paneliga o‘ting.
-* **Operator Ish Stoli:** `http://localhost:5173/staff` — `F2` tugmasi bilan mijozni chaqiring.
+* **Tizimga Kirish:** `http://localhost:5173/` (yoki `/login`) — Login qilib boshqaruv paneliga o‘ting.
+* **Mijozlar Kioski:** `http://localhost:5173/kiosk` (yoki kirish sahifasidagi havola orqali) — Chipta oling.
+* **Katta Zal Tablosi:** `http://localhost:5173/display` (yoki kirish sahifasidagi havola orqali) — TV monitori va musiqali chaqiruv.
+* **Operator Ish Stoli:** `http://localhost:5173/staff` — `F2` tugmasi bilan mijozni chaqiring (OP-101 ... OP-105).
 * **Menejer Paneli:** `http://localhost:5173/manager` — Analitikani kuzating va Excel/CSV formatida yuklab oling.
 * **Superadmin Paneli:** `http://localhost:5173/admin` — Xodimlar, Adminlar va Bo‘limlarni boshqaring.
 
@@ -336,8 +367,11 @@ Tizimga kirish uchun quyidagi tayyor sinov foydalanuvchilaridan foydalanishingiz
 Backend loyihada eng og‘ir yuklama va xavfsizlik talablarini tekshiruvchi 13 ta majburiy avtotest mavjud:
 
 ```bash
-cd backend
-npm test
+# Asosiy papkadan:
+npm run backend:test
+
+# Yoki backend papkasidan:
+cd backend && npm test
 ```
 
 ### Sinov Natijasi:
@@ -398,7 +432,7 @@ elektron_navbat_tizimi/
 │   │   ├── tests/                       # Majburiy avtotestlar (mandatoryScenarios.test.js)
 │   │   ├── app.js                       # Express ilovasi
 │   │   └── index.js                     # HTTP & Socket.IO server kirish nuqtasi
-│   ├── .env                             # PostgreSQL ulanish sozlamalari
+│   ├── .env.example                     # PostgreSQL ulanish parametrlari namunasi (.env ga nusxalanadi)
 │   └── package.json                     # Backend paketlari
 │
 ├── src/                                 # React 19 Frontend
