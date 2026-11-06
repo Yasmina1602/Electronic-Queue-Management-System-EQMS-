@@ -75,8 +75,11 @@ function MainApp() {
       if (user?.role === 'OPERATOR' && view !== 'login' && view !== 'staff') {
         view = 'staff';
       }
-      // SUPERADMIN va MANAGER faqat admin va manager ni ko'radi (Operator stoliga ruxsat yo'q)
-      else if ((user?.role === 'SUPERADMIN' || user?.role === 'MANAGER' || user?.role === 'ADMIN') && view !== 'login' && view !== 'admin' && view !== 'manager') {
+      // SUPERADMIN va MANAGER faqat operator stoliga kira olmaydi (admin, manager, kiosk, display ga o'ta oladi)
+      else if (
+        (user?.role === 'SUPERADMIN' || user?.role === 'MANAGER' || user?.role === 'ADMIN') &&
+        view === 'staff'
+      ) {
         view = 'admin';
       }
     } catch {}

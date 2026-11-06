@@ -14,7 +14,6 @@ import {
   BarChart2,
   LogIn,
   LogOut,
-  User,
 } from 'lucide-react';
 
 export function Navbar({ currentView, setCurrentView }) {
@@ -46,12 +45,31 @@ export function Navbar({ currentView, setCurrentView }) {
     (t) => t.branchId === activeBranchId && t.status === 'WAITING'
   ).length;
 
-  // Planshet (Kiosk) va Televizor (Display) rejimlarida Navbar umuman ko'rinmasin
-  if (currentView === 'kiosk' || currentView === 'display') {
+  // Planshet (Kiosk) va Televizor (Display) rejimlarida Navbar faqat tizimga kirmagan mijozlar uchun yashirin
+  if ((currentView === 'kiosk' || currentView === 'display') && !currentUser) {
     return null;
   }
 
-  // Rollar: Administrator roli o'chirildi, Filial Menejeri admin bo'ldi. Superadmin ikkala panelni ko'radi.
+  // Avatar uchun 2 ta bosh harfni hisoblash (SA, MG, yoki xodim ism/fam)
+  const getAvatarInitials = (user) => {
+    if (!user) return '??';
+    if (user.role === 'SUPERADMIN') return 'SA';
+    if (user.role === 'MANAGER' || user.role === 'ADMIN') return 'MG';
+
+    // Xodim uchun (ism va familiyadan 2 ta harf)
+    if (user.name) {
+      const parts = user.name.trim().split(/\s+/).filter(Boolean);
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      }
+      if (parts.length === 1 && parts[0].length >= 2) {
+        return parts[0].substring(0, 2).toUpperCase();
+      }
+    }
+    return (user.login || 'OP').substring(0, 2).toUpperCase();
+  };
+
+  // Rollar: Superadmin va Admin uchun Kiosk va Tablo o'tish paneli qo'shildi
   let navItems = [];
   if (currentUser?.role === 'OPERATOR') {
     navItems = [
@@ -61,6 +79,8 @@ export function Navbar({ currentView, setCurrentView }) {
     navItems = [
       { id: 'admin', label: 'Admin Paneli', icon: Shield, badge: null },
       { id: 'manager', label: 'Menejer Paneli', icon: BarChart2, badge: null },
+      { id: 'kiosk', label: 'Kiosk', title: 'Kiosk Terminali', icon: Smartphone, badge: null },
+      { id: 'display', label: 'Tablo', title: 'Katta Tablo Monitor', icon: Monitor, badge: null },
     ];
   }
 
@@ -113,14 +133,15 @@ export function Navbar({ currentView, setCurrentView }) {
                 <button
                   key={item.id}
                   onClick={() => setCurrentView(item.id)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer relative ${
+                  title={item.title || item.label}
+                  className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs font-bold transition-all cursor-pointer relative ${
                     isActive
                       ? 'bg-emerald-800 text-white shadow-md border border-emerald-600 ring-2 ring-emerald-500/30'
                       : 'text-emerald-200 hover:text-white hover:bg-emerald-900/60'
                   }`}
                 >
                   <Icon className="w-4 h-4 shrink-0 text-emerald-300" />
-                  <span className="hidden md:inline">{item.label}</span>
+                  <span>{item.label}</span>
                   {item.badge && (
                     <span className="ml-1 px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-black">
                       {item.badge}
@@ -134,24 +155,25 @@ export function Navbar({ currentView, setCurrentView }) {
           {/* Right Controls: User Profile / Login, Branch Selector, Audio */}
           <div className="flex items-center gap-2">
             
-            {/* User Auth Info or Login button */}
+            {/* User Auth Info: Aylana shaklidagi avatar (MG, SA, xodim ism/fam) */}
             {currentUser ? (
-              <div className="flex items-center gap-2 bg-emerald-900/90 border border-emerald-700/80 px-2.5 py-1.5 rounded-xl text-xs">
-                <User className="w-3.5 h-3.5 text-emerald-300" />
-                <span className="font-bold text-white hidden sm:inline max-w-[150px] truncate">
-                  {currentUser.role === 'OPERATOR'
-                    ? `Xodim: ${currentUser.name}`
-                    : currentUser.role === 'SUPERADMIN'
-                    ? `Superadmin: ${currentUser.name}`
-                    : `Filial Menejeri: ${currentUser.name}`}
-                </span>
-                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-emerald-800 text-emerald-200 border border-emerald-600">
-                  {currentUser.role === 'MANAGER' ? 'ADMIN' : currentUser.role}
-                </span>
+              <div className="flex items-center gap-1.5 bg-emerald-900/80 border border-emerald-700/80 p-1 pl-1.5 pr-1.5 rounded-full shadow-sm">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs text-white shadow-md select-none border-2 transition-transform hover:scale-105 ${
+                    currentUser.role === 'SUPERADMIN'
+                      ? 'bg-gradient-to-tr from-purple-800 to-purple-600 border-purple-300'
+                      : currentUser.role === 'MANAGER' || currentUser.role === 'ADMIN'
+                      ? 'bg-gradient-to-tr from-teal-800 to-teal-600 border-teal-300'
+                      : 'bg-gradient-to-tr from-emerald-800 to-emerald-600 border-emerald-300'
+                  }`}
+                  title={`${currentUser.name || 'Foydalanuvchi'} (${currentUser.role === 'MANAGER' ? 'ADMIN' : currentUser.role})`}
+                >
+                  {getAvatarInitials(currentUser)}
+                </div>
                 <button
                   onClick={handleLogout}
                   title="Tizimdan chiqish"
-                  className="ml-1 text-emerald-400 hover:text-rose-300 cursor-pointer"
+                  className="p-1 rounded-full text-emerald-300 hover:text-rose-300 hover:bg-emerald-800/80 transition-colors cursor-pointer"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                 </button>

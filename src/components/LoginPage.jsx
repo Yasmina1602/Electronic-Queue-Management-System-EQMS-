@@ -9,8 +9,6 @@ import {
   ArrowRight,
   CheckCircle2,
   AlertCircle,
-  Monitor,
-  Smartphone,
   Eye,
   EyeOff,
 } from 'lucide-react';
@@ -182,26 +180,6 @@ export function LoginPage({ onNavigate }) {
             )}
           </button>
         </form>
-
-        {/* Public Terminal Shortcuts */}
-        <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-          <button
-            type="button"
-            onClick={() => onNavigate('kiosk')}
-            className="flex items-center gap-1 hover:text-emerald-800 font-semibold cursor-pointer"
-          >
-            <Smartphone className="w-3.5 h-3.5 text-emerald-700" />
-            <span>Kiosk Terminali</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onNavigate('display')}
-            className="flex items-center gap-1 hover:text-emerald-800 font-semibold cursor-pointer"
-          >
-            <Monitor className="w-3.5 h-3.5 text-emerald-700" />
-            <span>Katta Tablo Monitor</span>
-          </button>
-        </div>
 
       </div>
 
