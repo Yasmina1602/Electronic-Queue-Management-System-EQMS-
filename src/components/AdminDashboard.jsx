@@ -454,12 +454,8 @@ export function AdminDashboard() {
           </div>
         )}
 
-        {/* 1. XODIMLAR OYNASI (Talab: tugma bosilsa shu oynalarga kirsin) */}
-        {activeTab === 'STAFF' && (
-          <div className="space-y-6 animate-fade-in">
-            {/* 4 Summary Stat KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          
+        {/* 4 Summary Stat KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white border-2 border-emerald-200 p-5 rounded-3xl shadow-sm">
             <div className="flex items-center justify-between text-slate-500 mb-2">
               <span className="text-xs font-extrabold uppercase text-emerald-900">Faol Xodimlar</span>
@@ -503,11 +499,81 @@ export function AdminDashboard() {
               Hozir oyna oldidagi mijozlar
             </div>
           </div>
-
         </div>
 
-        {/* MAIN TABLE: Xodimlar samaradorligi (Faqat operator xodimlar ko'rinadi) */}
-        <div className="bg-white border-2 border-emerald-200 rounded-3xl p-6 shadow-xl space-y-4">
+        {/* Oynalarga kirish tugmalari (<div class="grid ... gap-4"> divning tagidan) */}
+        <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-emerald-100">
+          <button
+            onClick={() => setActiveTab('STAFF')}
+            className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+              activeTab === 'STAFF'
+                ? 'bg-emerald-800 text-white shadow-md shadow-emerald-900/20 scale-[1.02]'
+                : 'bg-emerald-50/80 text-emerald-950 border border-emerald-200 hover:bg-emerald-100'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Xodimlar</span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-[11px] font-mono ${
+                activeTab === 'STAFF'
+                  ? 'bg-emerald-950 text-emerald-200'
+                  : 'bg-white text-emerald-800 border border-emerald-200'
+              }`}
+            >
+              {regularStaff.length} nafar
+            </span>
+          </button>
+
+          {isSuperAdmin && (
+            <>
+              <button
+                onClick={() => setActiveTab('ADMINS')}
+                className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                  activeTab === 'ADMINS'
+                    ? 'bg-purple-800 text-white shadow-md shadow-purple-900/20 scale-[1.02]'
+                    : 'bg-purple-50/80 text-purple-950 border border-purple-200 hover:bg-purple-100'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>Administratorlar</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[11px] font-mono ${
+                    activeTab === 'ADMINS'
+                      ? 'bg-purple-950 text-purple-200'
+                      : 'bg-white text-purple-800 border border-purple-200'
+                  }`}
+                >
+                  {adminStaff.length} nafar
+                </span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('SERVICES')}
+                className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                  activeTab === 'SERVICES'
+                    ? 'bg-teal-800 text-white shadow-md shadow-teal-900/20 scale-[1.02]'
+                    : 'bg-teal-50/80 text-teal-950 border border-teal-200 hover:bg-teal-100'
+                }`}
+              >
+                <Layers className="w-4 h-4" />
+                <span>Bo‘limlar</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[11px] font-mono ${
+                    activeTab === 'SERVICES'
+                      ? 'bg-teal-950 text-teal-200'
+                      : 'bg-white text-teal-800 border border-teal-200'
+                  }`}
+                >
+                  {services.length} ta
+                </span>
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* 1. XODIMLAR JADVALI */}
+        {activeTab === 'STAFF' && (
+          <div className="bg-white border-2 border-emerald-200 rounded-3xl p-6 shadow-xl space-y-4 animate-fade-in">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b-2 border-emerald-100 pb-4">
             <div>
               <h2 className="text-lg font-black text-emerald-950 tracking-tight flex items-center gap-2">
@@ -693,78 +759,7 @@ export function AdminDashboard() {
             </table>
           </div>
         </div>
-      </div>
-    )}
-
-        {/* Oynalarga kirish tugmalari (Panelning tagida: Xodimlar, Administratorlar, Bo'limlar) */}
-        <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-emerald-100">
-          <button
-            onClick={() => setActiveTab('STAFF')}
-            className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
-              activeTab === 'STAFF'
-                ? 'bg-emerald-800 text-white shadow-md shadow-emerald-900/20 scale-[1.02]'
-                : 'bg-emerald-50/80 text-emerald-950 border border-emerald-200 hover:bg-emerald-100'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>Xodimlar</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-[11px] font-mono ${
-                activeTab === 'STAFF'
-                  ? 'bg-emerald-950 text-emerald-200'
-                  : 'bg-white text-emerald-800 border border-emerald-200'
-              }`}
-            >
-              {regularStaff.length} nafar
-            </span>
-          </button>
-
-          {isSuperAdmin && (
-            <>
-              <button
-                onClick={() => setActiveTab('ADMINS')}
-                className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
-                  activeTab === 'ADMINS'
-                    ? 'bg-purple-800 text-white shadow-md shadow-purple-900/20 scale-[1.02]'
-                    : 'bg-purple-50/80 text-purple-950 border border-purple-200 hover:bg-purple-100'
-                }`}
-              >
-                <ShieldCheck className="w-4 h-4" />
-                <span>Administratorlar</span>
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[11px] font-mono ${
-                    activeTab === 'ADMINS'
-                      ? 'bg-purple-950 text-purple-200'
-                      : 'bg-white text-purple-800 border border-purple-200'
-                  }`}
-                >
-                  {adminStaff.length} nafar
-                </span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('SERVICES')}
-                className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
-                  activeTab === 'SERVICES'
-                    ? 'bg-teal-800 text-white shadow-md shadow-teal-900/20 scale-[1.02]'
-                    : 'bg-teal-50/80 text-teal-950 border border-teal-200 hover:bg-teal-100'
-                }`}
-              >
-                <Layers className="w-4 h-4" />
-                <span>Bo‘limlar</span>
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[11px] font-mono ${
-                    activeTab === 'SERVICES'
-                      ? 'bg-teal-950 text-teal-200'
-                      : 'bg-white text-teal-800 border border-teal-200'
-                  }`}
-                >
-                  {services.length} ta
-                </span>
-              </button>
-            </>
-          )}
-        </div>
+      )}
 
         {/* 2. SUPERADMIN UCHUN ALOHIDA ADMINLAR OYNASI (Talab: tugma bosilsa shu oynalarga kirsin) */}
         {isSuperAdmin && activeTab === 'ADMINS' && (
