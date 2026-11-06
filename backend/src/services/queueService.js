@@ -186,9 +186,10 @@ export async function callNextCustomer(staffId, autoAdvance = false, targetBranc
 
     if (serviceIds.length > 0) {
       const ticketRes = await client.query(
-        `SELECT q.*, s.name as service_name, s.prefix as service_prefix
+        `SELECT q.*, s.name as service_name, s.prefix as service_prefix, c.customer_code
          FROM queues q
          JOIN services s ON q.service_id = s.id
+         LEFT JOIN anonymous_customers c ON q.anonymous_customer_id = c.id
          WHERE q.branch_id = $1 
            AND q.service_id = ANY($2::varchar[])
            AND q.status = 'WAITING'
@@ -196,7 +197,7 @@ export async function callNextCustomer(staffId, autoAdvance = false, targetBranc
            CASE WHEN q.priority = 'VIP' THEN 1 ELSE 2 END ASC,
            q.created_at ASC
          LIMIT 1
-         FOR UPDATE SKIP LOCKED`,
+         FOR UPDATE OF q SKIP LOCKED`,
         [branchId, serviceIds]
       );
       if (ticketRes.rows.length > 0) {
@@ -207,15 +208,16 @@ export async function callNextCustomer(staffId, autoAdvance = false, targetBranc
     // Fallback: If no service-specific ticket waiting, pick any waiting ticket in branch
     if (!eligibleTicket) {
       const fallbackRes = await client.query(
-        `SELECT q.*, s.name as service_name, s.prefix as service_prefix
+        `SELECT q.*, s.name as service_name, s.prefix as service_prefix, c.customer_code
          FROM queues q
          JOIN services s ON q.service_id = s.id
+         LEFT JOIN anonymous_customers c ON q.anonymous_customer_id = c.id
          WHERE q.branch_id = $1 AND q.status = 'WAITING'
          ORDER BY 
            CASE WHEN q.priority = 'VIP' THEN 1 ELSE 2 END ASC,
            q.created_at ASC
          LIMIT 1
-         FOR UPDATE SKIP LOCKED`,
+         FOR UPDATE OF q SKIP LOCKED`,
         [branchId]
       );
       if (fallbackRes.rows.length > 0) {
@@ -618,10 +620,11 @@ export async function getFullBranchState(branchId) {
       ORDER BY e.window_number
     `, [resolvedBranchId]),
     query(`
-      SELECT q.*, s.name as service_name, s.prefix as service_prefix, e.name as staff_name
+      SELECT q.*, s.name as service_name, s.prefix as service_prefix, e.name as staff_name, c.customer_code
       FROM queues q
       JOIN services s ON q.service_id = s.id
       LEFT JOIN employees e ON q.staff_id = e.id
+      LEFT JOIN anonymous_customers c ON q.anonymous_customer_id = c.id
       WHERE q.branch_id = $1 AND q.created_date = CURRENT_DATE
       ORDER BY q.created_at ASC
     `, [resolvedBranchId]),
@@ -653,7 +656,8 @@ export async function getFullBranchState(branchId) {
       windowNumber: t.window_number,
       clientName: t.client_name,
       clientPhone: t.client_phone,
-      clientIdentifier: t.client_identifier || t.client_name || 'Mijoz',
+      customerCode: t.customer_code,
+      clientIdentifier: t.customer_code || t.client_identifier || t.client_name || ('CUST-' + String(t.id).replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase()),
       createdAt: t.created_at ? new Date(t.created_at).getTime() : Date.now(),
       calledAt: t.called_at ? new Date(t.called_at).getTime() : null,
       startedAt: t.started_at ? new Date(t.started_at).getTime() : null,

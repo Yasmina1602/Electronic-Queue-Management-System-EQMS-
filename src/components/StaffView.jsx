@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useQueue } from '../context/QueueContext';
+import { useQueue, getCustomerCode } from '../context/QueueContext';
 import { STAFF_STATUS, TICKET_STATUS, TICKET_PRIORITY } from '../constants/initialData';
 import {
   Play,
@@ -552,8 +552,8 @@ export function StaffView({ onNavigateHome }) {
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-slate-500 font-medium">Mijoz:</span>
-                        <span className="font-bold text-slate-900">
-                          {activeTicket?.clientIdentifier || 'Mijoz'}
+                        <span className="font-bold font-mono text-emerald-950">
+                          {activeTicket ? getCustomerCode(activeTicket) : '—'}
                         </span>
                       </div>
                     </div>
@@ -656,7 +656,7 @@ export function StaffView({ onNavigateHome }) {
                         {staffWaitingQueue[0].ticketNumber || staffWaitingQueue[0].ticket_number}
                       </div>
                       <div className="text-xs font-bold text-emerald-900 truncate">
-                        Mijoz: {staffWaitingQueue[0].clientIdentifier || staffWaitingQueue[0].client_name || 'Mijoz'}
+                        Mijoz: <span className="font-mono">{getCustomerCode(staffWaitingQueue[0])}</span>
                       </div>
                       {(staffWaitingQueue[0].clientPhone || staffWaitingQueue[0].client_phone) && (
                         <div className="text-[11px] font-mono text-slate-500">
@@ -780,8 +780,8 @@ export function StaffView({ onNavigateHome }) {
                                   </span>
                                 )}
                               </div>
-                              <div className="text-[11px] text-slate-600 font-medium truncate max-w-[130px]">
-                                {t.clientIdentifier || 'Mijoz'}
+                              <div className="text-[11px] text-emerald-950 font-mono font-bold truncate max-w-[130px]">
+                                {getCustomerCode(t)}
                               </div>
                             </td>
                             <td className="py-3 text-emerald-800 font-mono font-bold text-xs">
@@ -850,7 +850,7 @@ export function StaffView({ onNavigateHome }) {
                       return (
                         <tr key={t.id} className="hover:bg-emerald-50/60 transition-colors">
                           <td className="p-3.5 font-black text-emerald-950">{t.ticketNumber}</td>
-                          <td className="p-3.5 text-slate-800 font-semibold">{t.clientIdentifier || 'Mijoz'}</td>
+                          <td className="p-3.5 font-mono font-bold text-emerald-900">{getCustomerCode(t)}</td>
                           <td className="p-3.5 text-slate-700">{srv?.name}</td>
                           <td className="p-3.5">
                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-black ${
@@ -959,7 +959,7 @@ export function StaffView({ onNavigateHome }) {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="bg-emerald-50/60 p-5 rounded-2xl border-2 border-emerald-200 text-center shadow-xs">
                 <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Qabul Qilinganlar</div>
                 <div className="text-3xl font-black text-emerald-950 my-1">{currentStaff.servedCountToday || 42}</div>
@@ -969,11 +969,6 @@ export function StaffView({ onNavigateHome }) {
                 <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">O‘rtacha Xizmat Vaqti</div>
                 <div className="text-3xl font-black text-emerald-800 my-1">8:30</div>
                 <div className="text-[11px] font-medium text-slate-500">Standart: 10:00 daqiqa</div>
-              </div>
-              <div className="bg-emerald-50/60 p-5 rounded-2xl border-2 border-emerald-200 text-center shadow-xs">
-                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Mijozlar Bahosi</div>
-                <div className="text-3xl font-black text-amber-600 my-1">4.9 / 5</div>
-                <div className="text-[11px] font-medium text-slate-500">38 ta ijobiy fikr</div>
               </div>
               <div className="bg-emerald-50/60 p-5 rounded-2xl border-2 border-emerald-200 text-center shadow-xs">
                 <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Kelmadi (No-Show)</div>

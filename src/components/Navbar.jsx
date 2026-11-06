@@ -118,9 +118,6 @@ export function Navbar({ currentView, setCurrentView }) {
               <div className="text-sm font-black text-white tracking-tight flex items-center gap-1.5">
                 <span>ELEKTRON NAVBAT</span>
               </div>
-              <div className="text-[10px] font-medium text-emerald-300">
-                PostgreSQL & Real-time Web
-              </div>
             </div>
           </div>
 

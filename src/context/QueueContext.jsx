@@ -46,8 +46,26 @@ function normalizeStaff(s) {
   };
 }
 
+export function getCustomerCode(t) {
+  if (!t) return 'CUST-D3A6F293';
+  if (t.customerCode) return t.customerCode;
+  if (t.customer_code) return t.customer_code;
+  if (t.clientIdentifier && t.clientIdentifier.startsWith('CUST-')) return t.clientIdentifier;
+  if (t.client_identifier && t.client_identifier.startsWith('CUST-')) return t.client_identifier;
+  
+  // Deterministic 8-char hex code from id or ticketNumber
+  const raw = String(t.id || t.ticketNumber || 'CUST');
+  let hash = 0;
+  for (let i = 0; i < raw.length; i++) {
+    hash = (hash * 31 + raw.charCodeAt(i)) & 0xffffffff;
+  }
+  const hex = Math.abs(hash).toString(16).toUpperCase().padStart(8, '0').slice(0, 8);
+  return `CUST-${hex}`;
+}
+
 function normalizeTicket(t) {
   if (!t) return t;
+  const custCode = t.customer_code || t.customerCode || (t.clientIdentifier && t.clientIdentifier.startsWith('CUST-') ? t.clientIdentifier : null) || getCustomerCode(t);
   return {
     ...t,
     ticketNumber: t.ticket_number || t.ticketNumber,
@@ -57,7 +75,8 @@ function normalizeTicket(t) {
     windowNumber: t.window_number || t.windowNumber,
     clientName: t.client_name || t.clientName,
     clientPhone: t.client_phone || t.clientPhone,
-    clientIdentifier: t.client_identifier || t.clientIdentifier || t.client_name || t.clientName || 'Mijoz',
+    customerCode: custCode,
+    clientIdentifier: custCode,
     createdAt: typeof t.createdAt === 'number' ? t.createdAt : (t.created_at ? new Date(t.created_at).getTime() : Date.now()),
     calledAt: typeof t.calledAt === 'number' ? t.calledAt : (t.called_at ? new Date(t.called_at).getTime() : null),
     startedAt: typeof t.startedAt === 'number' ? t.startedAt : (t.started_at ? new Date(t.started_at).getTime() : null),
@@ -315,6 +334,7 @@ export function QueueProvider({ children }) {
       });
 
       if (backendRes && backendRes.ticket) {
+        const custCode = backendRes.ticket.customerCode || backendRes.ticket.customer_code || getCustomerCode(backendRes.ticket);
         const formattedTicket = {
           id: backendRes.ticket.id,
           ticketNumber: backendRes.ticket.ticket_number || backendRes.ticket.ticketNumber,
@@ -322,7 +342,8 @@ export function QueueProvider({ children }) {
           branchId: backendRes.ticket.branch_id || activeBranchId,
           status: backendRes.ticket.status,
           priority: backendRes.ticket.priority,
-          customerCode: backendRes.ticket.customerCode,
+          customerCode: custCode,
+          clientIdentifier: custCode,
           referralCode: backendRes.ticket.referralCode,
           createdAt: Date.now(),
         };
@@ -350,6 +371,9 @@ export function QueueProvider({ children }) {
     const nextSeqNum = 1 + tickets.filter((t) => t.ticketNumber?.startsWith(`${prefix}-`)).length;
     const ticketNumber = `${prefix}-${nextSeqNum}`;
 
+    const custHex = Math.abs((Date.now() ^ (nextSeqNum * 2654435761))).toString(16).toUpperCase().padStart(8, '0').slice(-8);
+    const customerCode = `CUST-${custHex}`;
+
     const newTicket = {
       id: `tick-${Date.now()}`,
       ticketNumber,
@@ -357,7 +381,8 @@ export function QueueProvider({ children }) {
       branchId: activeBranchId,
       status: TICKET_STATUS.WAITING,
       priority: isVip ? TICKET_PRIORITY.VIP : TICKET_PRIORITY.REGULAR,
-      clientIdentifier: `Mijoz #${nextSeqNum}`,
+      customerCode,
+      clientIdentifier: customerCode,
       createdAt: Date.now(),
     };
 
