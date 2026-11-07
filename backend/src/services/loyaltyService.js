@@ -2,10 +2,10 @@ import crypto from 'crypto';
 import { pool, query, withTransaction } from '../config/db.js';
 
 /**
- * Generate secure anonymous token
+ * Generate secure anonymous token (ixcham va tez kiritish uchun 4 belgili token)
  */
 export function generateAnonymousCode(prefix = 'QR') {
-  const random = crypto.randomBytes(4).toString('hex').toUpperCase();
+  const random = crypto.randomBytes(2).toString('hex').toUpperCase();
   return `${prefix}-${random}`;
 }
 

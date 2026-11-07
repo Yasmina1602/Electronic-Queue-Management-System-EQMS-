@@ -372,8 +372,8 @@ export function QueueProvider({ children }) {
     const nextSeqNum = 1 + tickets.filter((t) => t.ticketNumber?.startsWith(`${prefix}-`)).length;
     const ticketNumber = `${prefix}-${nextSeqNum}`;
 
-    const custHex = Math.abs((Date.now() ^ (nextSeqNum * 2654435761))).toString(16).toUpperCase().padStart(8, '0').slice(-8);
-    const customerCode = `CUST-${custHex}`;
+    const custHex = Math.abs((Date.now() ^ (nextSeqNum * 2654435761))).toString(16).toUpperCase().padStart(4, '0').slice(-4);
+    const customerCode = anonymousCode || `CUST-${custHex}`;
 
     const newTicket = {
       id: `tick-${Date.now()}`,

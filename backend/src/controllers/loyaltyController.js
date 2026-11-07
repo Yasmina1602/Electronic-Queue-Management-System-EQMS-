@@ -8,24 +8,33 @@ export async function lookupCustomer(req, res, next) {
       return res.status(400).json({ success: false, error: 'Kod kiritilmadi' });
     }
     const cleanCode = code.trim().toUpperCase();
+    const custVariant = cleanCode.startsWith('CUST-') ? cleanCode : `CUST-${cleanCode}`;
+    const refVariant = cleanCode.startsWith('REF-') ? cleanCode : `REF-${cleanCode}`;
 
-    // 1. Search in anonymous_customers
+    // 1. Search in anonymous_customers by exact code, prefix variant, or partial match
     let result = await query(
       `SELECT c.*,
               GREATEST(c.visits_count, 1, (SELECT COUNT(*)::int FROM queues q WHERE q.anonymous_customer_id = c.id)) as actual_visits
        FROM anonymous_customers c
-       WHERE c.customer_code = $1 OR c.referral_code = $1`,
-      [cleanCode]
+       WHERE c.customer_code = $1 
+          OR c.customer_code = $2 
+          OR c.referral_code = $1 
+          OR c.referral_code = $3
+          OR c.customer_code ILIKE $4
+       ORDER BY c.last_visit_at DESC
+       LIMIT 1`,
+      [cleanCode, custVariant, refVariant, `%${cleanCode}%`]
     );
 
-    // 2. If not found by exact code, search if this code matches any ticket
+    // 2. If not found by direct customer search, search if this code matches any ticket
     if (result.rows.length === 0) {
       const qRes = await query(
         `SELECT q.*, c.customer_code as c_code, c.id as c_id
          FROM queues q
          JOIN anonymous_customers c ON q.anonymous_customer_id = c.id
-         WHERE q.ticket_number = $1 OR c.customer_code = $1`,
-        [cleanCode]
+         WHERE q.ticket_number = $1 OR c.customer_code = $1 OR c.customer_code = $2
+         LIMIT 1`,
+        [cleanCode, custVariant]
       );
       if (qRes.rows.length > 0 && qRes.rows[0].c_code) {
         result = await query(
@@ -37,40 +46,40 @@ export async function lookupCustomer(req, res, next) {
       }
     }
 
-    // 3. If STILL not found, and code starts with CUST-, auto-create the profile so verification never fails!
-    if (result.rows.length === 0 && cleanCode.startsWith('CUST-')) {
+    // 3. If STILL not found, auto-create the profile so verification never fails
+    if (result.rows.length === 0) {
       const id = `cust-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-      const refCode = `REF-${cleanCode.replace('CUST-', '')}`;
+      const targetCustCode = custVariant;
+      const targetRefCode = `REF-${targetCustCode.replace('CUST-', '')}`;
       const insertRes = await query(
         `INSERT INTO anonymous_customers 
           (id, customer_code, referral_code, visits_count, bonus_balance, discount_percent, created_at, last_visit_at)
          VALUES ($1, $2, $3, 1, 0, 0, NOW(), NOW())
-         ON CONFLICT (customer_code) DO UPDATE SET last_visit_at = NOW()
+         ON CONFLICT (customer_code) DO UPDATE SET visits_count = anonymous_customers.visits_count + 1, last_visit_at = NOW()
          RETURNING *`,
-        [id, cleanCode, refCode]
+        [id, targetCustCode, targetRefCode]
       );
       const row = insertRes.rows[0];
-      row.visits_count = 1;
+      row.visits_count = Math.max(Number(row.visits_count) || 1, 1);
+      row.discount_percent = calculateDiscount(row.visits_count);
       return res.json({ success: true, customer: row });
     }
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'Mijoz kartasi yoki kodi topilmadi!' });
-    }
-
     const row = result.rows[0];
-    const actualVisits = Number(row.actual_visits) || Math.max(Number(row.visits_count) || 1, 1);
-    const disc = calculateDiscount(actualVisits);
+    // Har bir kiritilganda / navbatdagi tashrifda tashriflar soni 1 taga oshadi va yangi chegirma hisoblanadi
+    const baseVisits = Math.max(Number(row.visits_count) || 1, Number(row.actual_visits) || 1);
+    const newVisits = baseVisits + 1;
+    const disc = calculateDiscount(newVisits);
 
-    // Update database if visits or discount evolved
-    if (row.visits_count !== actualVisits || row.discount_percent !== disc) {
-      await query(
-        `UPDATE anonymous_customers SET visits_count = $1, discount_percent = $2 WHERE id = $3`,
-        [actualVisits, disc, row.id]
-      );
-      row.visits_count = actualVisits;
-      row.discount_percent = disc;
-    }
+    await query(
+      `UPDATE anonymous_customers 
+       SET visits_count = $1, discount_percent = $2, last_visit_at = NOW() 
+       WHERE id = $3`,
+      [newVisits, disc, row.id]
+    );
+
+    row.visits_count = newVisits;
+    row.discount_percent = disc;
 
     res.json({ success: true, customer: row });
   } catch (err) {

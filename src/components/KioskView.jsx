@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQueue } from '../context/QueueContext';
 import { ThermalTicketModal } from './ThermalTicketModal';
 import { api } from '../utils/api';
@@ -19,6 +19,8 @@ import {
   Tag,
   Gift,
   X,
+  Camera,
+  CameraOff,
 } from 'lucide-react';
 
 export function KioskView() {
@@ -90,14 +92,82 @@ export function KioskView() {
     }
   };
 
+  const [scanningCamera, setScanningCamera] = useState(false);
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+      }
+    };
+  }, []);
+
+  const startCamera = async () => {
+    try {
+      setScanningCamera(true);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } },
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      if ('BarcodeDetector' in window) {
+        const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+        const scan = async () => {
+          if (!streamRef.current) return;
+          try {
+            if (videoRef.current && videoRef.current.readyState === 4) {
+              const barcodes = await detector.detect(videoRef.current);
+              if (barcodes.length > 0) {
+                const val = (barcodes[0].rawValue || barcodes[0].displayValue || '').trim();
+                if (val) {
+                  stopCamera();
+                  setLoyaltyCodeInput(val);
+                  verifyLoyaltyCode(val);
+                  return;
+                }
+              }
+            }
+          } catch (e) {
+            // davom etadi
+          }
+          requestAnimationFrame(scan);
+        };
+        requestAnimationFrame(scan);
+      }
+    } catch (err) {
+      console.warn('Camera error:', err);
+      stopCamera();
+      setLoyaltyMessage(
+        lang === 'uz'
+          ? 'ℹ Kameraga ulanib bo‘lmadi. Kodni quyida kiritishingiz mumkin.'
+          : 'ℹ Камера недоступна. Введите код вручную.'
+      );
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    setScanningCamera(false);
+  };
+
   // Verify anonymous loyalty code or friend referral code
-  const handleVerifyLoyalty = async (e) => {
-    e.preventDefault();
-    const cleanCode = loyaltyCodeInput.trim().toUpperCase();
-    if (!cleanCode) return;
+  const verifyLoyaltyCode = async (rawCode) => {
+    const inputVal = (rawCode || loyaltyCodeInput).trim().toUpperCase();
+    if (!inputVal) return;
+
+    const fullCode = !inputVal.startsWith('CUST-') && !inputVal.startsWith('REF-')
+      ? `CUST-${inputVal}`
+      : inputVal;
 
     try {
-      const res = await api.lookupCustomer(cleanCode);
+      const res = await api.lookupCustomer(inputVal);
       if (res.success && res.customer) {
         setAppliedLoyalty(res.customer);
         const visits = res.customer.visits_count || 1;
@@ -108,54 +178,51 @@ export function KioskView() {
             ? `✓ Kod tasdiqlandi! Sizning tashrifingiz: ${visits}-marta. Chegirma: ${disc}%, Bonus: ${bonus} so‘m.`
             : `✓ Код подтвержден! Ваш визит: ${visits}-й. Скидка: ${disc}%, Бонус: ${bonus} сум.`
         );
-        setTimeout(() => {
-          setShowLoyaltyModal(false);
-        }, 1400);
+        // Oyna avtomatik o'chmaydi — foydalanuvchi "Davom etish" yoki "Yopish" tugmasini bosguncha turaveradi
       } else {
         throw new Error(res?.error || 'Mijoz topilmadi');
       }
     } catch (err) {
       // Local fallback in case backend is offline
-      if (cleanCode.startsWith('CUST-')) {
-        const matchingTickets = tickets.filter(
-          (t) => t.customerCode === cleanCode || t.clientIdentifier === cleanCode
-        );
-        const visits = Math.max(matchingTickets.length, 1);
-        const disc = visits >= 10 ? 15 : visits >= 5 ? 10 : visits >= 3 ? 5 : 0;
-        const fallbackCustomer = {
-          customer_code: cleanCode,
-          visits_count: visits,
-          discount_percent: disc,
-          bonus_balance: 0,
-        };
-        setAppliedLoyalty(fallbackCustomer);
-        setLoyaltyMessage(
-          lang === 'uz'
-            ? `✓ Kod tasdiqlandi! Sizning tashrifingiz: ${visits}-marta. Chegirma: ${disc}%.`
-            : `✓ Код подтвержден! Ваш визит: ${visits}-й. Скидка: ${disc}%.`
-        );
-        setTimeout(() => {
-          setShowLoyaltyModal(false);
-        }, 1400);
-      } else if (cleanCode.startsWith('REF-')) {
-        setAppliedLoyalty({ referral_code: cleanCode });
-        setLoyaltyMessage(
-          lang === 'uz'
-            ? `✓ Do‘st kodi (${cleanCode}) biriktirildi!\nXizmat yakunlangach bonus hisoblanadi.`
-            : `✓ Промокод друга (${cleanCode}) применен!\nБонус будет начислен после визита.`
-        );
-        setTimeout(() => {
-          setShowLoyaltyModal(false);
-        }, 1400);
-      } else {
-        setLoyaltyMessage(
-          lang === 'uz'
-            ? '✗ Noto‘g‘ri kod! Kod chekdagi "CUST-" yoki "REF-" bilan boshlanishi kerak.'
-            : '✗ Неверный код! Код должен начинаться с "CUST-" или "REF-".'
-        );
-      }
+      let storedVisits = Number(localStorage.getItem(`loyalty_visits_${fullCode}`)) || 1;
+      storedVisits += 1;
+      localStorage.setItem(`loyalty_visits_${fullCode}`, storedVisits);
+
+      const disc = storedVisits >= 10 ? 15 : storedVisits >= 5 ? 10 : storedVisits >= 3 ? 5 : 0;
+      const fallbackCustomer = {
+        customer_code: fullCode,
+        visits_count: storedVisits,
+        discount_percent: disc,
+        bonus_balance: 0,
+      };
+      setAppliedLoyalty(fallbackCustomer);
+      setLoyaltyMessage(
+        lang === 'uz'
+          ? `✓ Kod tasdiqlandi! Sizning tashrifingiz: ${storedVisits}-marta. Chegirma: ${disc}%.`
+          : `✓ Код подтвержден! Ваш визит: ${storedVisits}-й. Скидка: ${disc}%.`
+      );
     }
   };
+
+  const handleVerifyLoyalty = (e) => {
+    e.preventDefault();
+    verifyLoyaltyCode(loyaltyCodeInput);
+  };
+
+  const handleOpenLoyaltyModal = () => {
+    setLoyaltyCodeInput(''); // Oldingi kiritilgan kodni har safar ochganda tozalaydi!
+    setLoyaltyMessage('');
+    setShowLoyaltyModal(true);
+  };
+
+  const handleCloseLoyaltyModal = () => {
+    stopCamera();
+    setShowLoyaltyModal(false);
+    setLoyaltyCodeInput('');
+    setLoyaltyMessage('');
+  };
+
+  const latestCustomerCode = tickets.find((t) => t.customerCode)?.customerCode || null;
 
   const formattedTime = currentTime.toLocaleTimeString('uz-UZ', {
     hour: '2-digit',
@@ -317,10 +384,7 @@ export function KioskView() {
 
           {/* Bottom Banner: Section 10 - Sodiqlik & Referral QR kodi */}
           <div
-            onClick={() => {
-              setLoyaltyMessage('');
-              setShowLoyaltyModal(true);
-            }}
+            onClick={handleOpenLoyaltyModal}
             className="w-full bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-800 text-white p-3 sm:p-3.5 rounded-2xl flex items-center justify-between shadow-md cursor-pointer hover:shadow-lg transition-all shrink-0"
           >
             <div className="flex items-center gap-3">
@@ -367,31 +431,99 @@ export function KioskView() {
                 {lang === 'uz' ? 'QR-kod / Sodiqlik / Do‘st kodi' : 'Карта лояльности / Промокод'}
               </h3>
               <button
-                onClick={() => {
-                  setShowLoyaltyModal(false);
-                  setLoyaltyMessage('');
-                }}
-                className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                onClick={handleCloseLoyaltyModal}
+                className="text-slate-400 hover:text-slate-700 cursor-pointer p-1 rounded-lg hover:bg-slate-100 transition-colors"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-xs text-slate-600 mb-4">
+            <p className="text-xs text-slate-600 mb-3">
               {lang === 'uz'
                 ? 'Avvalgi tashrifingizdagi QR-kod raqamini yoki do‘stingiz yuborgan referral kodni kiriting:'
                 : 'Введите код с предыдущего чека или реферальный промокод друга:'}
             </p>
 
+            {/* Kamera orqali tezkor skanerlash tugmasi */}
+            <button
+              type="button"
+              onClick={scanningCamera ? stopCamera : startCamera}
+              className={`w-full mb-3 py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                scanningCamera
+                  ? 'border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100'
+                  : 'border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900'
+              }`}
+            >
+              {scanningCamera ? (
+                <>
+                  <CameraOff className="w-4 h-4 text-rose-600" />
+                  <span>{lang === 'uz' ? 'Kamerani to‘xtatish' : 'Выключить камеру'}</span>
+                </>
+              ) : (
+                <>
+                  <Camera className="w-4 h-4 text-emerald-700" />
+                  <span>{lang === 'uz' ? '📷 Kamera orqali tezkor skanerlash (QR)' : '📷 Быстро сканировать камерой'}</span>
+                </>
+              )}
+            </button>
+
+            {/* Kamera video oynasi */}
+            {scanningCamera && (
+              <div className="relative mb-3 rounded-2xl overflow-hidden border-2 border-emerald-600 bg-black aspect-video flex items-center justify-center">
+                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                <div className="absolute inset-0 border-2 border-dashed border-emerald-400 m-5 rounded-xl pointer-events-none animate-pulse"></div>
+                <div className="absolute bottom-2 bg-black/70 backdrop-blur-xs text-white text-[10px] px-3 py-1 rounded-full font-bold">
+                  {lang === 'uz' ? 'Chekdagi QR-kodni ramkaga tuting' : 'Наведите QR-код на рамку'}
+                </div>
+              </div>
+            )}
+
+            {/* So'nggi chek kodi bo'lsa, tezkor 1-bosishda kiritish (Vaqt tejash uchun) */}
+            {latestCustomerCode && !scanningCamera && (
+              <div className="flex items-center gap-1.5 mb-2.5 flex-wrap">
+                <span className="text-[11px] text-slate-500 font-medium">
+                  {lang === 'uz' ? 'Tezkor kiritish:' : 'Быстрый ввод:'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoyaltyCodeInput(latestCustomerCode);
+                    setLoyaltyMessage('');
+                  }}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100/90 hover:bg-emerald-200 text-emerald-950 border border-emerald-300 text-[11px] font-bold cursor-pointer transition-colors shadow-2xs"
+                >
+                  <Sparkles className="w-3 h-3 text-emerald-700" />
+                  <span>{latestCustomerCode}</span>
+                </button>
+              </div>
+            )}
+
             <form onSubmit={handleVerifyLoyalty}>
-              <input
-                type="text"
-                autoFocus
-                value={loyaltyCodeInput}
-                onChange={(e) => setLoyaltyCodeInput(e.target.value)}
-                placeholder="Masalan: CUST-D3A6F293 yoki REF-A1B2"
-                className="w-full px-4 py-3 rounded-xl border border-emerald-300 focus:outline-hidden focus:border-emerald-700 text-sm font-bold uppercase tracking-wider mb-3 bg-emerald-50/50"
-              />
+              <div className="relative mb-1.5">
+                <input
+                  type="text"
+                  autoFocus
+                  value={loyaltyCodeInput}
+                  onChange={(e) => setLoyaltyCodeInput(e.target.value)}
+                  placeholder={lang === 'uz' ? 'Masalan: 17512C1B yoki 7B2A' : 'Например: 17512C1B или 7B2A'}
+                  className="w-full px-4 py-3 rounded-xl border border-emerald-300 focus:outline-hidden focus:border-emerald-700 text-base font-black uppercase tracking-wider bg-emerald-50/50 pr-10 text-emerald-950 placeholder:text-slate-400 placeholder:font-normal placeholder:tracking-normal placeholder:text-xs"
+                />
+                {loyaltyCodeInput && (
+                  <button
+                    type="button"
+                    onClick={() => setLoyaltyCodeInput('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer p-0.5"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              <p className="text-[11px] text-slate-500 mb-3 font-medium">
+                {lang === 'uz'
+                  ? '💡 "CUST-" yozish shart emas — faqat kod raqamini kiritsangiz kifoya (kamroq vaqt oladi).'
+                  : '💡 Префикс "CUST-" не обязателен — достаточно ввести сам номер кода.'}
+              </p>
 
               {loyaltyMessage && (
                 <div className={`text-xs font-bold mb-3 p-3 rounded-xl border whitespace-pre-line leading-relaxed ${
@@ -406,22 +538,28 @@ export function KioskView() {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowLoyaltyModal(false);
-                    setLoyaltyMessage('');
-                  }}
+                  onClick={handleCloseLoyaltyModal}
                   className="flex-1 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-700 hover:bg-slate-100 text-xs cursor-pointer"
                 >
                   {lang === 'uz' ? 'Yopish' : 'Закрыть'}
                 </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-emerald-800 text-white font-bold hover:bg-emerald-900 text-xs shadow-md cursor-pointer transition-all active:scale-95"
-                >
-                  {appliedLoyalty
-                    ? (lang === 'uz' ? 'Davom etish' : 'Продолжить')
-                    : (lang === 'uz' ? 'Tasdiqlash' : 'Применить')}
-                </button>
+                {appliedLoyalty ? (
+                  <button
+                    type="button"
+                    onClick={handleCloseLoyaltyModal}
+                    className="flex-1 py-2.5 rounded-xl bg-emerald-800 text-white font-bold hover:bg-emerald-900 text-xs shadow-md cursor-pointer transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                  >
+                    <span>{lang === 'uz' ? 'Davom etish (Xizmat tanlash)' : 'Продолжить'}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 rounded-xl bg-emerald-800 text-white font-bold hover:bg-emerald-900 text-xs shadow-md cursor-pointer transition-all active:scale-95"
+                  >
+                    {lang === 'uz' ? 'Tasdiqlash' : 'Применить'}
+                  </button>
+                )}
               </div>
             </form>
           </div>
