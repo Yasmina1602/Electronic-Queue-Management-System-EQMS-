@@ -39,7 +39,7 @@ export async function getOrCreateAnonymousCustomer(providedCode = null, referral
 
   // Create new anonymous customer
   const id = `cust-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-  const customerCode = generateAnonymousCode('CUST');
+  const customerCode = providedCode || generateAnonymousCode('CUST');
   const newReferralCode = generateAnonymousCode('REF');
 
   let referredById = null;
@@ -56,7 +56,7 @@ export async function getOrCreateAnonymousCustomer(providedCode = null, referral
   const insertRes = await runner.query(
     `INSERT INTO anonymous_customers 
       (id, customer_code, referral_code, referred_by_id, visits_count, bonus_balance, discount_percent, created_at, last_visit_at)
-     VALUES ($1, $2, $3, $4, 0, 0, 0, NOW(), NOW())
+     VALUES ($1, $2, $3, $4, 1, 0, 0, NOW(), NOW())
      RETURNING *`,
     [id, customerCode, newReferralCode, referredById]
   );

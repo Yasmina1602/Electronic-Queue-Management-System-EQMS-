@@ -252,6 +252,7 @@ export function QueueProvider({ children }) {
       socket.on('state:reset', () => syncWithBackend());
       socket.on('queue:cleared', () => syncWithBackend());
       socket.on('service:updated', () => syncWithBackend());
+      socket.on('service:deleted', () => syncWithBackend());
     } catch (e) {
       console.warn('Socket connection error:', e);
     }
@@ -724,6 +725,19 @@ export function QueueProvider({ children }) {
     } catch (e) {}
   };
 
+  const deleteService = async (serviceId) => {
+    try {
+      if (isBackendConnected) {
+        await api.deleteService(serviceId);
+      }
+    } catch (e) {
+      console.warn('Backend deleteService error:', e);
+    }
+    setServices((prev) => prev.filter((s) => s.id !== serviceId));
+    syncWithBackend();
+    return { success: true };
+  };
+
   const resetToDemo = async () => {
     try {
       await api.resetDemo();
@@ -785,6 +799,7 @@ export function QueueProvider({ children }) {
         rejectStaffRequest,
         addService,
         updateService,
+        deleteService,
         toggleServiceActive,
         resetToDemo,
         clearQueue,

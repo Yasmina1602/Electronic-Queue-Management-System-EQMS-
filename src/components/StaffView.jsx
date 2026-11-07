@@ -15,11 +15,9 @@ import {
   BarChart2,
   LogOut,
   User,
-  MessageSquare,
   AlertTriangle,
   ChevronDown,
   ChevronUp,
-  Send,
   ShieldAlert,
   X,
   Sliders,
@@ -43,8 +41,6 @@ export function StaffView({ onNavigateHome }) {
     markNoShow,
     transferTicket,
     updateStaffStatus,
-    operatorAlerts,
-    sendOperatorAlert,
     submitStaffRequest,
   } = useQueue();
 
@@ -96,7 +92,6 @@ export function StaffView({ onNavigateHome }) {
   const [selectedTransferService, setSelectedTransferService] = useState('');
   const [showBreakModal, setShowBreakModal] = useState(false);
   const [breakReason, setBreakReason] = useState('Tushlik tanaffusi');
-  const [chatInput, setChatInput] = useState('');
   const [queueExpanded, setQueueExpanded] = useState(true);
   const [timerSeconds, setTimerSeconds] = useState(0);
 
@@ -295,13 +290,6 @@ export function StaffView({ onNavigateHome }) {
   const confirmBreak = async () => {
     await updateStaffStatus(currentStaff.id, STAFF_STATUS.PAUSED, breakReason);
     setShowBreakModal(false);
-  };
-
-  const handleSendChat = (e) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
-    sendOperatorAlert(chatInput.trim());
-    setChatInput('');
   };
 
   return (
@@ -638,11 +626,11 @@ export function StaffView({ onNavigateHome }) {
                 </div>
               </div>
 
-              {/* Bottom Row of Left: Secondary Navbat Card + Quick Chat + Statistika */}
+              {/* Bottom Row of Left: Secondary Navbat Card + Statistika */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                 
-                {/* Secondary Navbat Card (4 cols) */}
-                <div className="md:col-span-4 bg-white border-2 border-emerald-200 rounded-2xl p-4 flex flex-col justify-between shadow-md">
+                {/* Secondary Navbat Card (6 cols) */}
+                <div className="md:col-span-6 bg-white border-2 border-emerald-200 rounded-2xl p-4 sm:p-5 flex flex-col justify-between shadow-md">
                   <div className="text-xs font-bold text-slate-500 mb-2">Navbatdagi Mijoz</div>
                   {staffWaitingQueue.length > 0 ? (
                     <div className="bg-emerald-50/70 p-3.5 rounded-xl border border-emerald-200 my-auto space-y-1.5">
@@ -675,61 +663,23 @@ export function StaffView({ onNavigateHome }) {
                   )}
                 </div>
 
-                {/* Quick Chat / Alerts (4 cols) */}
-                <div className="md:col-span-4 bg-white border-2 border-emerald-200 rounded-2xl p-4 flex flex-col justify-between shadow-md">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-2">
-                    <span>Xabarlar & Ogohlantirishlar</span>
-                    <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
-                  </div>
-                  
-                  <div className="space-y-2 max-h-24 overflow-y-auto text-[11px] pr-1">
-                    {operatorAlerts.slice(0, 2).map((a) => (
-                      <div key={a.id} className="bg-emerald-50/60 p-2 rounded-lg border border-emerald-200">
-                        <div className="text-emerald-900 font-bold text-[10px] flex justify-between">
-                          <span>{a.sender}</span>
-                          <span className="text-slate-400">{a.time}</span>
-                        </div>
-                        <p className="text-slate-700 text-[10px] leading-tight line-clamp-2 mt-0.5">
-                          {a.message}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <form onSubmit={handleSendChat} className="flex gap-1 mt-2">
-                    <input
-                      type="text"
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      placeholder="Xabar yozing..."
-                      className="flex-1 bg-slate-50 border border-emerald-300 rounded-lg px-2.5 py-1 text-[11px] text-slate-900 focus:outline-hidden"
-                    />
-                    <button
-                      type="submit"
-                      className="p-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg cursor-pointer"
-                    >
-                      <Send className="w-3 h-3" />
-                    </button>
-                  </form>
-                </div>
-
-                {/* Statistika 4 Cards (4 cols) */}
-                <div className="md:col-span-4 bg-white border-2 border-emerald-200 rounded-2xl p-4 shadow-md flex flex-col justify-between">
+                {/* Statistika 4 Cards (6 cols) */}
+                <div className="md:col-span-6 bg-white border-2 border-emerald-200 rounded-2xl p-4 sm:p-5 shadow-md flex flex-col justify-between">
                   <div className="text-xs font-bold text-slate-500 mb-2">Bugungi Statistika</div>
-                  <div className="grid grid-cols-2 gap-2 text-center text-xs">
-                    <div className="bg-emerald-50/60 p-2 rounded-xl border border-emerald-200">
+                  <div className="grid grid-cols-2 gap-2 text-center text-xs my-auto">
+                    <div className="bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-200">
                       <div className="text-[10px] text-slate-500">Xizmat ko‘rsatildi:</div>
                       <div className="text-base font-black text-emerald-950">{currentStaff.servedCountToday || 24} mijoz</div>
                     </div>
-                    <div className="bg-emerald-50/60 p-2 rounded-xl border border-emerald-200">
+                    <div className="bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-200">
                       <div className="text-[10px] text-slate-500">O‘rtacha vaqt:</div>
                       <div className="text-base font-black text-emerald-800">8 daqiqa</div>
                     </div>
-                    <div className="bg-emerald-50/60 p-2 rounded-xl border border-emerald-200">
+                    <div className="bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-200">
                       <div className="text-[10px] text-slate-500">Kutilmoqda:</div>
                       <div className="text-base font-black text-amber-700">{staffWaitingQueue.length} mijoz</div>
                     </div>
-                    <div className="bg-emerald-50/60 p-2 rounded-xl border border-emerald-200">
+                    <div className="bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-200">
                       <div className="text-[10px] text-slate-500">Holat:</div>
                       <div className="text-base font-black text-emerald-800">Faol</div>
                     </div>

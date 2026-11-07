@@ -104,3 +104,28 @@ export async function toggleServiceActive(req, res, next) {
     next(err);
   }
 }
+
+export async function deleteService(req, res, next) {
+  try {
+    const { id } = req.params;
+
+    // Remove foreign references before deleting service
+    await query(`DELETE FROM employee_services WHERE service_id = $1`, [id]);
+    await query(`DELETE FROM queues WHERE service_id = $1`, [id]);
+    await query(`DELETE FROM daily_sequences WHERE service_id = $1`, [id]);
+
+    const result = await query(`DELETE FROM services WHERE id = $1 RETURNING *`, [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Bo‘lim topilmadi!' });
+    }
+
+    const io = getIO();
+    if (io) {
+      io.emit('service:deleted', { id });
+    }
+
+    res.json({ success: true, message: 'Bo‘lim muvaffaqiyatli o‘chirildi', id });
+  } catch (err) {
+    next(err);
+  }
+}

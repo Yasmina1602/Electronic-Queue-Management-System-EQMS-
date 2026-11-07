@@ -73,6 +73,7 @@ export const api = {
   deleteBranch: (branchId) => request(`/branches/${branchId}`, { method: 'DELETE' }),
   createService: (payload) => request('/services', { method: 'POST', body: JSON.stringify(payload) }),
   updateService: (serviceId, payload) => request(`/services/${serviceId}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteService: (serviceId) => request(`/services/${serviceId}`, { method: 'DELETE' }),
   toggleService: (id) => request(`/services/${id}/toggle`, { method: 'PATCH' }),
 
   // Reports & Analytics

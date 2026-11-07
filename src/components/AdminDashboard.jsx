@@ -51,6 +51,7 @@ export function AdminDashboard() {
     updateBranch,
     addService,
     updateService,
+    deleteService,
     resetToDemo,
     clearQueue,
     audioEnabled,
@@ -318,6 +319,21 @@ export function AdminDashboard() {
       setNewServiceDescription('');
     } else {
       setNotification(res?.error || 'Bo‘lim qo‘shishda xatolik yuz berdi!');
+      setTimeout(() => setNotification(null), 4000);
+    }
+  };
+
+  // Delete Service Submit (Bo'limni o'chirish)
+  const handleDeleteService = async (srv) => {
+    if (!window.confirm(`Haqiqatan ham "${srv.name}" (${srv.prefix}) bo‘limini o‘chirmoqchimisiz?`)) {
+      return;
+    }
+    const res = await deleteService(srv.id);
+    if (res?.success) {
+      setNotification(`"${srv.name}" bo‘limi muvaffaqiyatli o‘chirildi!`);
+      setTimeout(() => setNotification(null), 3500);
+    } else {
+      setNotification(res?.error || 'Bo‘limni o‘chirishda xatolik yuz berdi!');
       setTimeout(() => setNotification(null), 4000);
     }
   };
@@ -969,13 +985,23 @@ export function AdminDashboard() {
                         </span>
                       </td>
                       <td className="p-3.5 text-right">
-                        <button
-                          onClick={() => openEditServiceModal(srv)}
-                          className="px-3 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                          <span>Tahrirlash</span>
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => openEditServiceModal(srv)}
+                            className="px-2.5 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                            <span>Tahrirlash</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteService(srv)}
+                            className="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1"
+                            title="Bo‘limni o‘chirish"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>O‘chirish</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

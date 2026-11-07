@@ -5,6 +5,8 @@ import { api } from '../utils/api';
 import {
   Layers,
   Calculator,
+  Building2,
+  Briefcase,
   QrCode,
   Sparkles,
   ChevronRight,
@@ -43,23 +45,23 @@ export function KioskView() {
 
   const activeBranch = branches.find((b) => b.id === activeBranchId) || branches[0];
 
-  const xizmatlarService =
-    services.find((s) => s.id === 'srv-general' || s.prefix === 'X') ||
-    services[0] || {
-      id: 'srv-general',
-      name: 'Xizmatlar',
-      prefix: 'X',
-      description: 'Kassa, Kreditlar, Omonatlar, Kartalar va ma’lumotlar',
-    };
+  // Barcha faol bo'limlar (Superadmin qo'shgan yangi bo'limlar ham chiqadi)
+  const activeServices = services.filter((s) => s.active !== false);
 
-  const buxgalteriyaService =
-    services.find((s) => s.id === 'srv-accounting' || s.prefix === 'B') ||
-    services[1] || {
-      id: 'srv-accounting',
-      name: 'Buxgalteriya',
-      prefix: 'B',
-      description: 'Hisob-kitoblar, Soliq, To‘lov topshiriqlari va yuridik shaxslar',
-    };
+  const getServiceIcon = (srv) => {
+    const nameLower = (srv.name || '').toLowerCase();
+    const idLower = (srv.id || '').toLowerCase();
+    if (nameLower.includes('buxg') || idLower.includes('acc') || srv.prefix === 'B') {
+      return <Calculator className="w-8 h-8 text-white" />;
+    }
+    if (nameLower.includes('kassa') || nameLower.includes('valyuta')) {
+      return <Briefcase className="w-8 h-8 text-white" />;
+    }
+    if (nameLower.includes('kredit') || nameLower.includes('ipoteka') || nameLower.includes('bank')) {
+      return <Building2 className="w-8 h-8 text-white" />;
+    }
+    return <Layers className="w-8 h-8 text-white" />;
+  };
 
   // Section 2: 1-bosishda navbat yaratish (Shaxsiy ma'lumot talab qilinmaydi!)
   const handleServiceClick = async (service, isVip = false) => {
@@ -90,28 +92,67 @@ export function KioskView() {
   // Verify anonymous loyalty code or friend referral code
   const handleVerifyLoyalty = async (e) => {
     e.preventDefault();
-    if (!loyaltyCodeInput.trim()) return;
+    const cleanCode = loyaltyCodeInput.trim().toUpperCase();
+    if (!cleanCode) return;
 
     try {
-      const code = loyaltyCodeInput.trim().toUpperCase();
-      const res = await api.lookupCustomer(code);
+      const res = await api.lookupCustomer(cleanCode);
       if (res.success && res.customer) {
         setAppliedLoyalty(res.customer);
+        const visits = res.customer.visits_count || 1;
         const disc = res.customer.discount_percent || 0;
+        const bonus = res.customer.bonus_balance || 0;
         setLoyaltyMessage(
           lang === 'uz'
-            ? `Topildi! Sizning doimiy tashriflaringiz: ${res.customer.visits_count} ta. Chegirma: ${disc}%, Bonus: ${res.customer.bonus_balance} so‘m`
-            : `Найдено! Ваши визиты: ${res.customer.visits_count}. Скидка: ${disc}%, Бонус: ${res.customer.bonus_balance} сум`
+            ? `✓ Kod tasdiqlandi! Sizning tashrifingiz: ${visits}-marta. Chegirma: ${disc}%, Bonus: ${bonus} so‘m.`
+            : `✓ Код подтвержден! Ваш визит: ${visits}-й. Скидка: ${disc}%, Бонус: ${bonus} сум.`
         );
+        setTimeout(() => {
+          setShowLoyaltyModal(false);
+        }, 1400);
+      } else {
+        throw new Error(res?.error || 'Mijoz topilmadi');
       }
     } catch (err) {
-      // Treat as potential friend referral code
-      setAppliedLoyalty({ referral_code: loyaltyCodeInput.trim().toUpperCase() });
-      setLoyaltyMessage(
-        lang === 'uz'
-          ? `Referral kodi biriktirildi (${loyaltyCodeInput.trim().toUpperCase()}). Do‘stingizga xizmat yakunlangach bonus beriladi!`
-          : `Реферальный код применен (${loyaltyCodeInput.trim().toUpperCase()}). Другу будет начислен бонус!`
-      );
+      // Local fallback in case backend is offline
+      if (cleanCode.startsWith('CUST-')) {
+        const matchingTickets = tickets.filter(
+          (t) => t.customerCode === cleanCode || t.clientIdentifier === cleanCode
+        );
+        const visits = Math.max(matchingTickets.length, 1);
+        const disc = visits >= 10 ? 15 : visits >= 5 ? 10 : visits >= 3 ? 5 : 0;
+        const fallbackCustomer = {
+          customer_code: cleanCode,
+          visits_count: visits,
+          discount_percent: disc,
+          bonus_balance: 0,
+        };
+        setAppliedLoyalty(fallbackCustomer);
+        setLoyaltyMessage(
+          lang === 'uz'
+            ? `✓ Kod tasdiqlandi! Sizning tashrifingiz: ${visits}-marta. Chegirma: ${disc}%.`
+            : `✓ Код подтвержден! Ваш визит: ${visits}-й. Скидка: ${disc}%.`
+        );
+        setTimeout(() => {
+          setShowLoyaltyModal(false);
+        }, 1400);
+      } else if (cleanCode.startsWith('REF-')) {
+        setAppliedLoyalty({ referral_code: cleanCode });
+        setLoyaltyMessage(
+          lang === 'uz'
+            ? `✓ Do‘st kodi (${cleanCode}) biriktirildi!\nXizmat yakunlangach bonus hisoblanadi.`
+            : `✓ Промокод друга (${cleanCode}) применен!\nБонус будет начислен после визита.`
+        );
+        setTimeout(() => {
+          setShowLoyaltyModal(false);
+        }, 1400);
+      } else {
+        setLoyaltyMessage(
+          lang === 'uz'
+            ? '✗ Noto‘g‘ri kod! Kod chekdagi "CUST-" yoki "REF-" bilan boshlanishi kerak.'
+            : '✗ Неверный код! Код должен начинаться с "CUST-" или "REF-".'
+        );
+      }
     }
   };
 
@@ -119,14 +160,6 @@ export function KioskView() {
     hour: '2-digit',
     minute: '2-digit',
   });
-
-  const waitingCountGeneral = tickets.filter(
-    (t) => t.branchId === activeBranchId && t.serviceId === xizmatlarService.id && t.status === 'WAITING'
-  ).length;
-
-  const waitingCountAccounting = tickets.filter(
-    (t) => t.branchId === activeBranchId && t.serviceId === buxgalteriyaService.id && t.status === 'WAITING'
-  ).length;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-between p-3 sm:p-6 bg-slate-100/90 text-slate-900 font-sans">
@@ -221,102 +254,72 @@ export function KioskView() {
             </p>
           </div>
 
-          {/* 2 Asosiy Xizmat Kartalari (Katta, qulay, sensor mos) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-            
-            {/* Karta 1: Xizmatlar */}
-            <button
-              onClick={() => handleServiceClick(xizmatlarService)}
-              disabled={isProcessing}
-              className={`group relative flex flex-col justify-between p-6 sm:p-7 rounded-3xl border-2 transition-all duration-300 text-left shadow-lg hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] cursor-pointer ${
-                selectedServiceId === xizmatlarService.id
-                  ? 'border-emerald-600 bg-emerald-50'
-                  : 'border-emerald-200/90 bg-gradient-to-br from-white via-emerald-50/40 to-emerald-100/30 hover:border-emerald-700 hover:from-white hover:to-emerald-100/60'
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-800 to-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-800/25 group-hover:scale-105 transition-transform">
-                  <Layers className="w-8 h-8 text-white" />
-                </div>
-                <div className="text-right">
-                  <span className="px-3 py-1 rounded-full text-[11px] font-black bg-emerald-800 text-white shadow-xs">
-                    {xizmatlarService.prefix || 'X'}
-                  </span>
-                  <div className="text-[10px] text-slate-500 font-bold mt-1">
-                    {waitingCountGeneral} {lang === 'uz' ? 'kutmoqda' : 'в очереди'}
+          {/* Faol Bo'limlar Kartalari (Superadmin qo'shgan yangi bo'limlar ham bu yerda chiqadi) */}
+          <div className={`grid gap-4 sm:gap-5 ${
+            activeServices.length <= 1
+              ? 'grid-cols-1 max-w-lg mx-auto w-full'
+              : activeServices.length === 2
+                ? 'grid-cols-1 sm:grid-cols-2'
+                : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+          }`}>
+            {activeServices.map((service) => {
+              const waitingCount = tickets.filter(
+                (t) => t.branchId === activeBranchId && t.serviceId === service.id && t.status === 'WAITING'
+              ).length;
+              const isSelected = selectedServiceId === service.id;
+
+              return (
+                <button
+                  key={service.id}
+                  onClick={() => handleServiceClick(service)}
+                  disabled={isProcessing}
+                  className={`group relative flex flex-col justify-between p-6 sm:p-7 rounded-3xl border-2 transition-all duration-300 text-left shadow-lg hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] cursor-pointer ${
+                    isSelected
+                      ? 'border-emerald-600 bg-emerald-50'
+                      : 'border-emerald-200/90 bg-gradient-to-br from-white via-emerald-50/40 to-emerald-100/30 hover:border-emerald-700 hover:from-white hover:to-emerald-100/60'
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-800 to-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-800/25 group-hover:scale-105 transition-transform">
+                      {getServiceIcon(service)}
+                    </div>
+                    <div className="text-right">
+                      <span className="px-3 py-1 rounded-full text-[11px] font-black bg-emerald-800 text-white shadow-xs">
+                        {service.prefix || 'X'}
+                      </span>
+                      <div className="text-[10px] text-slate-500 font-bold mt-1">
+                        {waitingCount} {lang === 'uz' ? 'kutmoqda' : 'в очереди'}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              <div className="mt-6">
-                <h3 className="text-2xl font-black text-emerald-950 group-hover:text-emerald-800 transition-colors">
-                  {lang === 'uz' ? (xizmatlarService.name || 'Xizmatlar') : 'Банковские услуги'}
-                </h3>
-                <p className="text-xs font-medium text-slate-600 mt-2 line-clamp-2 leading-relaxed">
-                  {lang === 'uz'
-                    ? (xizmatlarService.description || 'Kassa, Kreditlar, Omonatlar, Kartalar va ma’lumotlar')
-                    : 'Касса, кредиты, вклады, банковские карты и консультации'}
-                </p>
-              </div>
-
-              <div className="mt-5 pt-3.5 border-t border-emerald-200/70 flex items-center justify-between text-xs font-bold text-emerald-800 group-hover:text-emerald-900">
-                <span className="flex items-center gap-1.5">
-                  <Printer className="w-4 h-4 text-emerald-700" />
-                  {lang === 'uz' ? 'Chek chiqarish' : 'Получить талон'}
-                </span>
-                <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
-              </div>
-            </button>
-
-            {/* Karta 2: Buxgalteriya */}
-            <button
-              onClick={() => handleServiceClick(buxgalteriyaService)}
-              disabled={isProcessing}
-              className={`group relative flex flex-col justify-between p-6 sm:p-7 rounded-3xl border-2 transition-all duration-300 text-left shadow-lg hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] cursor-pointer ${
-                selectedServiceId === buxgalteriyaService.id
-                  ? 'border-emerald-600 bg-emerald-50'
-                  : 'border-emerald-200/90 bg-gradient-to-br from-white via-emerald-50/40 to-emerald-100/30 hover:border-emerald-700 hover:from-white hover:to-emerald-100/60'
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-900 to-teal-700 text-white flex items-center justify-center shadow-lg shadow-emerald-900/25 group-hover:scale-105 transition-transform">
-                  <Calculator className="w-8 h-8 text-white" />
-                </div>
-                <div className="text-right">
-                  <span className="px-3 py-1 rounded-full text-[11px] font-black bg-emerald-900 text-white shadow-xs">
-                    {buxgalteriyaService.prefix || 'B'}
-                  </span>
-                  <div className="text-[10px] text-slate-500 font-bold mt-1">
-                    {waitingCountAccounting} {lang === 'uz' ? 'kutmoqda' : 'в очереди'}
+                  <div className="mt-6">
+                    <h3 className="text-2xl font-black text-emerald-950 group-hover:text-emerald-800 transition-colors">
+                      {service.name}
+                    </h3>
+                    <p className="text-xs font-medium text-slate-600 mt-2 line-clamp-2 leading-relaxed">
+                      {service.description || (lang === 'uz' ? 'Navbat olish uchun bosing' : 'Нажмите для получения талона')}
+                    </p>
                   </div>
-                </div>
-              </div>
 
-              <div className="mt-6">
-                <h3 className="text-2xl font-black text-emerald-950 group-hover:text-emerald-800 transition-colors">
-                  {lang === 'uz' ? (buxgalteriyaService.name || 'Buxgalteriya') : 'Бухгалтерия и юр. лица'}
-                </h3>
-                <p className="text-xs font-medium text-slate-600 mt-2 line-clamp-2 leading-relaxed">
-                  {lang === 'uz'
-                    ? (buxgalteriyaService.description || 'Hisob-kitoblar, Soliq, To‘lov topshiriqlari va yuridik shaxslar')
-                    : 'Расчеты, налоги, платежные поручения и юридические лица'}
-                </p>
-              </div>
-
-              <div className="mt-5 pt-3.5 border-t border-emerald-200/70 flex items-center justify-between text-xs font-bold text-emerald-800 group-hover:text-emerald-900">
-                <span className="flex items-center gap-1.5">
-                  <Printer className="w-4 h-4 text-emerald-700" />
-                  {lang === 'uz' ? 'Chek chiqarish' : 'Получить талон'}
-                </span>
-                <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
-              </div>
-            </button>
-
+                  <div className="mt-5 pt-3.5 border-t border-emerald-200/70 flex items-center justify-between text-xs font-bold text-emerald-800 group-hover:text-emerald-900">
+                    <span className="flex items-center gap-1.5">
+                      <Printer className="w-4 h-4 text-emerald-700" />
+                      {lang === 'uz' ? 'Chek chiqarish' : 'Получить талон'}
+                    </span>
+                    <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </button>
+              );
+            })}
           </div>
 
           {/* Bottom Banner: Section 10 - Sodiqlik & Referral QR kodi */}
           <div
-            onClick={() => setShowLoyaltyModal(true)}
+            onClick={() => {
+              setLoyaltyMessage('');
+              setShowLoyaltyModal(true);
+            }}
             className="w-full bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-800 text-white p-3.5 sm:p-4 rounded-2xl flex items-center justify-between shadow-md cursor-pointer hover:shadow-lg transition-all"
           >
             <div className="flex items-center gap-3">
@@ -363,7 +366,10 @@ export function KioskView() {
                 {lang === 'uz' ? 'QR-kod / Sodiqlik / Do‘st kodi' : 'Карта лояльности / Промокод'}
               </h3>
               <button
-                onClick={() => setShowLoyaltyModal(false)}
+                onClick={() => {
+                  setShowLoyaltyModal(false);
+                  setLoyaltyMessage('');
+                }}
                 className="text-slate-400 hover:text-slate-700 cursor-pointer"
               >
                 <X className="w-4 h-4" />
@@ -382,29 +388,38 @@ export function KioskView() {
                 autoFocus
                 value={loyaltyCodeInput}
                 onChange={(e) => setLoyaltyCodeInput(e.target.value)}
-                placeholder="Masalan: CUST-A1B2 yoki REF-X9Y8"
+                placeholder="Masalan: CUST-D3A6F293 yoki REF-A1B2"
                 className="w-full px-4 py-3 rounded-xl border border-emerald-300 focus:outline-hidden focus:border-emerald-700 text-sm font-bold uppercase tracking-wider mb-3 bg-emerald-50/50"
               />
 
               {loyaltyMessage && (
-                <p className="text-xs font-bold text-emerald-800 mb-3 bg-emerald-100/60 p-2.5 rounded-xl border border-emerald-300">
+                <div className={`text-xs font-bold mb-3 p-3 rounded-xl border whitespace-pre-line leading-relaxed ${
+                  loyaltyMessage.startsWith('✓') || loyaltyMessage.startsWith('Topildi')
+                    ? 'bg-emerald-100 text-emerald-950 border-emerald-400'
+                    : 'bg-rose-50 text-rose-800 border-rose-300'
+                }`}>
                   {loyaltyMessage}
-                </p>
+                </div>
               )}
 
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowLoyaltyModal(false)}
+                  onClick={() => {
+                    setShowLoyaltyModal(false);
+                    setLoyaltyMessage('');
+                  }}
                   className="flex-1 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-700 hover:bg-slate-100 text-xs cursor-pointer"
                 >
                   {lang === 'uz' ? 'Yopish' : 'Закрыть'}
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-emerald-800 text-white font-bold hover:bg-emerald-900 text-xs shadow-md cursor-pointer"
+                  className="flex-1 py-2.5 rounded-xl bg-emerald-800 text-white font-bold hover:bg-emerald-900 text-xs shadow-md cursor-pointer transition-all active:scale-95"
                 >
-                  {lang === 'uz' ? 'Tasdiqlash' : 'Применить'}
+                  {appliedLoyalty
+                    ? (lang === 'uz' ? 'Davom etish' : 'Продолжить')
+                    : (lang === 'uz' ? 'Tasdiqlash' : 'Применить')}
                 </button>
               </div>
             </form>
