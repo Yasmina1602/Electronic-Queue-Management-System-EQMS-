@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQueue } from '../context/QueueContext';
+import { API_BASE } from '../utils/api';
 import { TICKET_STATUS, STAFF_STATUS } from '../constants/initialData';
 import {
   Clock,
@@ -41,7 +42,7 @@ export function ManagerDashboard() {
 
   // MBBT analitika ma'lumotlarini yuklab olish funksiyalari (Excel, CSV, PDF)
   const handleDownloadExcel = () => {
-    window.open(`http://localhost:5000/api/reports/export/excel?branchId=${selectedBranch}`, '_blank');
+    window.open(`${API_BASE}/reports/export/excel?branchId=${selectedBranch}`, '_blank');
     setShowExportMenu(false);
   };
 
@@ -105,7 +106,7 @@ export function ManagerDashboard() {
   };
 
   const handleDownloadPdf = () => {
-    window.open(`http://localhost:5000/api/reports/export/pdf?branchId=${selectedBranch}`, '_blank');
+    window.open(`${API_BASE}/reports/export/pdf?branchId=${selectedBranch}`, '_blank');
     setShowExportMenu(false);
   };
 

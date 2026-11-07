@@ -1,7 +1,12 @@
 // Backend REST API client for QMS
 
-export const API_BASE = 'http://localhost:5000/api';
-export const SOCKET_URL = 'http://localhost:5000';
+export const SOCKET_URL =
+  import.meta.env.VITE_API_URL ||
+  (typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+    ? `${window.location.protocol}//${window.location.hostname}:5000`
+    : 'http://localhost:5000');
+
+export const API_BASE = `${SOCKET_URL}/api`;
 
 async function request(endpoint, options = {}) {
   const token = localStorage.getItem('qms_auth_token');
