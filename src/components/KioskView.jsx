@@ -258,8 +258,6 @@ export function KioskView() {
     setLoyaltyMessage('');
   };
 
-  const latestCustomerCode = tickets.find((t) => t.customerCode)?.customerCode || null;
-
   const formattedTime = currentTime.toLocaleTimeString('uz-UZ', {
     hour: '2-digit',
     minute: '2-digit',
@@ -514,26 +512,6 @@ export function KioskView() {
               </div>
             )}
 
-            {/* So'nggi chek kodi bo'lsa, tezkor 1-bosishda kiritish (Vaqt tejash uchun) */}
-            {latestCustomerCode && !scanningCamera && (
-              <div className="flex items-center gap-1.5 mb-2.5 flex-wrap">
-                <span className="text-[11px] text-slate-500 font-medium">
-                  {lang === 'uz' ? 'Tezkor kiritish:' : 'Быстрый ввод:'}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoyaltyCodeInput(latestCustomerCode);
-                    setLoyaltyMessage('');
-                  }}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100/90 hover:bg-emerald-200 text-emerald-950 border border-emerald-300 text-[11px] font-bold cursor-pointer transition-colors shadow-2xs"
-                >
-                  <Sparkles className="w-3 h-3 text-emerald-700" />
-                  <span>{latestCustomerCode}</span>
-                </button>
-              </div>
-            )}
-
             <form onSubmit={handleVerifyLoyalty}>
               <div className="relative mb-1.5">
                 <input
@@ -571,32 +549,32 @@ export function KioskView() {
                 </div>
               )}
 
-              <div className="flex gap-2">
+              {/* Tugmalar: Kod tasdiqlangach FAQAT Yopish tugmasi qoladi */}
+              {loyaltyMessage && (loyaltyMessage.startsWith('✓') || loyaltyMessage.startsWith('Topildi')) ? (
                 <button
                   type="button"
                   onClick={handleCloseLoyaltyModal}
-                  className="flex-1 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-700 hover:bg-slate-100 text-xs cursor-pointer"
+                  className="w-full py-2.5 rounded-xl bg-emerald-800 text-white font-bold hover:bg-emerald-900 text-xs shadow-md cursor-pointer transition-all active:scale-95 flex items-center justify-center gap-1.5"
                 >
-                  {lang === 'uz' ? 'Yopish' : 'Закрыть'}
+                  <span>{lang === 'uz' ? 'Yopish' : 'Закрыть'}</span>
                 </button>
-                {appliedLoyalty ? (
+              ) : (
+                <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={handleCloseLoyaltyModal}
-                    className="flex-1 py-2.5 rounded-xl bg-emerald-800 text-white font-bold hover:bg-emerald-900 text-xs shadow-md cursor-pointer transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                    className="flex-1 py-2.5 rounded-xl border border-slate-300 font-bold text-slate-700 hover:bg-slate-100 text-xs cursor-pointer"
                   >
-                    <span>{lang === 'uz' ? 'Davom etish (Xizmat tanlash)' : 'Продолжить'}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    {lang === 'uz' ? 'Yopish' : 'Закрыть'}
                   </button>
-                ) : (
                   <button
                     type="submit"
                     className="flex-1 py-2.5 rounded-xl bg-emerald-800 text-white font-bold hover:bg-emerald-900 text-xs shadow-md cursor-pointer transition-all active:scale-95"
                   >
                     {lang === 'uz' ? 'Tasdiqlash' : 'Применить'}
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </form>
           </div>
         </div>
