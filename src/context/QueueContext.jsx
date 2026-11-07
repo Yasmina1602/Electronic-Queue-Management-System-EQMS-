@@ -47,20 +47,22 @@ function normalizeStaff(s) {
 }
 
 export function getCustomerCode(t) {
-  if (!t) return 'CUST-D3A6F293';
-  if (t.customerCode) return t.customerCode;
-  if (t.customer_code) return t.customer_code;
-  if (t.clientIdentifier && t.clientIdentifier.startsWith('CUST-')) return t.clientIdentifier;
-  if (t.client_identifier && t.client_identifier.startsWith('CUST-')) return t.client_identifier;
+  if (!t) return 'CUST-A1B2C3D4';
+  if (t.customerCode) return String(t.customerCode).toUpperCase();
+  if (t.customer_code) return String(t.customer_code).toUpperCase();
+  if (t.clientIdentifier && String(t.clientIdentifier).toUpperCase().startsWith('CUST-')) return String(t.clientIdentifier).toUpperCase();
+  if (t.client_identifier && String(t.client_identifier).toUpperCase().startsWith('CUST-')) return String(t.client_identifier).toUpperCase();
   
-  // Deterministic 8-char hex code from id or ticketNumber
-  const raw = String(t.id || t.ticketNumber || 'CUST');
+  // Truly unique 8-char hex code from ticket id
+  const raw = String(t.id || t.ticketNumber || Date.now());
   let hash = 0;
   for (let i = 0; i < raw.length; i++) {
     hash = (hash * 31 + raw.charCodeAt(i)) & 0xffffffff;
   }
-  const hex = Math.abs(hash).toString(16).toUpperCase().padStart(8, '0').slice(0, 8);
-  return `CUST-${hex}`;
+  const hex = Math.abs(hash).toString(16).toUpperCase().padStart(8, '0').slice(-8);
+  const code = `CUST-${hex}`;
+  t.customerCode = code;
+  return code;
 }
 
 function normalizeTicket(t) {
@@ -387,8 +389,9 @@ export function QueueProvider({ children }) {
     const nextSeqNum = 1 + tickets.filter((t) => t.ticketNumber?.startsWith(`${prefix}-`)).length;
     const ticketNumber = `${prefix}-${nextSeqNum}`;
 
-    const custHex = Math.abs((Date.now() ^ (nextSeqNum * 2654435761))).toString(16).toUpperCase().padStart(4, '0').slice(-4);
-    const customerCode = anonymousCode || `CUST-${custHex}`;
+    // Unikal 8 belgili xesh token (takrorlanmaslik kafolati)
+    const custHex = (Date.now().toString(16) + Math.floor(Math.random() * 0xffff).toString(16)).toUpperCase().slice(-8);
+    const customerCode = (anonymousCode ? String(anonymousCode).trim().toUpperCase() : null) || `CUST-${custHex}`;
 
     const newTicket = {
       id: `tick-${Date.now()}`,

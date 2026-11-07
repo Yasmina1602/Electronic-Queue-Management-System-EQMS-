@@ -8,19 +8,19 @@ export async function lookupCustomer(req, res, next) {
     if (!code) {
       return res.status(400).json({ success: false, error: 'Kod kiritilmadi' });
     }
-    const cleanCode = code.trim().toUpperCase();
+    const cleanCode = String(code).trim().toUpperCase();
     const custVariant = cleanCode.startsWith('CUST-') ? cleanCode : `CUST-${cleanCode}`;
     const refVariant = cleanCode.startsWith('REF-') ? cleanCode : `REF-${cleanCode}`;
 
-    // 1. Search in anonymous_customers by exact code, prefix variant, or partial match
+    // 1. Search in anonymous_customers with UPPER() / ILIKE (100% case-insensitivity: katta-kichik harf farq qilmaydi)
     let result = await query(
       `SELECT c.*,
               GREATEST(c.visits_count, 1, (SELECT COUNT(*)::int FROM queues q WHERE q.anonymous_customer_id = c.id)) as actual_visits
        FROM anonymous_customers c
-       WHERE c.customer_code = $1 
-          OR c.customer_code = $2 
-          OR c.referral_code = $1 
-          OR c.referral_code = $3
+       WHERE UPPER(c.customer_code) = UPPER($1) 
+          OR UPPER(c.customer_code) = UPPER($2) 
+          OR UPPER(c.referral_code) = UPPER($1) 
+          OR UPPER(c.referral_code) = UPPER($3)
           OR c.customer_code ILIKE $4
        ORDER BY c.last_visit_at DESC
        LIMIT 1`,
@@ -33,7 +33,9 @@ export async function lookupCustomer(req, res, next) {
         `SELECT q.*, c.customer_code as c_code, c.id as c_id
          FROM queues q
          JOIN anonymous_customers c ON q.anonymous_customer_id = c.id
-         WHERE q.ticket_number = $1 OR c.customer_code = $1 OR c.customer_code = $2
+         WHERE UPPER(q.ticket_number) = UPPER($1) 
+            OR UPPER(c.customer_code) = UPPER($1) 
+            OR UPPER(c.customer_code) = UPPER($2)
          LIMIT 1`,
         [cleanCode, custVariant]
       );
@@ -41,7 +43,7 @@ export async function lookupCustomer(req, res, next) {
         result = await query(
           `SELECT c.*,
                   GREATEST(c.visits_count, 1, (SELECT COUNT(*)::int FROM queues q WHERE q.anonymous_customer_id = c.id)) as actual_visits
-           FROM anonymous_customers c WHERE c.customer_code = $1`,
+           FROM anonymous_customers c WHERE UPPER(c.customer_code) = UPPER($1)`,
           [qRes.rows[0].c_code]
         );
       }

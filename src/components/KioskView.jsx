@@ -238,17 +238,17 @@ export function KioskView() {
     };
   }, [showLoyaltyModal]);
 
-  // Verify anonymous loyalty code or friend referral code
+  // Verify anonymous loyalty code or friend referral code (katta-kichik harf farq qilmaydi)
   const verifyLoyaltyCode = async (rawCode) => {
-    const inputVal = (rawCode || loyaltyCodeInput).trim().toUpperCase();
+    const inputVal = String(rawCode || loyaltyCodeInput).trim().toUpperCase();
     if (!inputVal) return;
 
-    const fullCode = !inputVal.startsWith('CUST-') && !inputVal.startsWith('REF-')
+    const fullCode = (!inputVal.startsWith('CUST-') && !inputVal.startsWith('REF-')
       ? `CUST-${inputVal}`
-      : inputVal;
+      : inputVal).toUpperCase();
 
     try {
-      const res = await api.lookupCustomer(inputVal);
+      const res = await api.lookupCustomer(fullCode);
       if (res.success && res.customer) {
         setAppliedLoyalty(res.customer);
         const visits = res.customer.visits_count || 1;
@@ -259,19 +259,19 @@ export function KioskView() {
             ? `✓ Kod tasdiqlandi! Sizning tashrifingiz: ${visits}-marta. Chegirma: ${disc}%, Bonus: ${bonus} so‘m.`
             : `✓ Код подтвержден! Ваш визит: ${visits}-й. Скидка: ${disc}%, Бонус: ${bonus} сум.`
         );
-        // Oyna avtomatik o'chmaydi — foydalanuvchi "Davom etish" yoki "Yopish" tugmasini bosguncha turaveradi
       } else {
         throw new Error(res?.error || 'Mijoz topilmadi');
       }
     } catch (err) {
       // Local fallback in case backend is offline
-      let storedVisits = Number(localStorage.getItem(`loyalty_visits_${fullCode}`)) || 1;
+      const upperKey = fullCode.toUpperCase();
+      let storedVisits = Number(localStorage.getItem(`loyalty_visits_${upperKey}`)) || 1;
       storedVisits += 1;
-      localStorage.setItem(`loyalty_visits_${fullCode}`, storedVisits);
+      localStorage.setItem(`loyalty_visits_${upperKey}`, storedVisits);
 
       const disc = storedVisits >= 10 ? 15 : storedVisits >= 5 ? 10 : storedVisits >= 3 ? 5 : 0;
       const fallbackCustomer = {
-        customer_code: fullCode,
+        customer_code: upperKey,
         visits_count: storedVisits,
         discount_percent: disc,
         bonus_balance: 0,

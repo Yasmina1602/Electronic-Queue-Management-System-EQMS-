@@ -2,10 +2,10 @@ import crypto from 'crypto';
 import { pool, query, withTransaction } from '../config/db.js';
 
 /**
- * Generate secure anonymous token (ixcham va tez kiritish uchun 4 belgili token)
+ * Generate secure anonymous token (8 belgili unikal, takrorlanmas token - 4.2 milliard kombinatsiya)
  */
-export function generateAnonymousCode(prefix = 'QR') {
-  const random = crypto.randomBytes(2).toString('hex').toUpperCase();
+export function generateAnonymousCode(prefix = 'CUST') {
+  const random = crypto.randomBytes(4).toString('hex').toUpperCase();
   return `${prefix}-${random}`;
 }
 
@@ -58,25 +58,35 @@ export async function getOrCreateAnonymousCustomer(providedCode = null, referral
   const runner = existingClient || pool;
 
   if (providedCode) {
+    const cleanProvided = String(providedCode).trim().toUpperCase();
+    const custVar = cleanProvided.startsWith('CUST-') ? cleanProvided : `CUST-${cleanProvided}`;
     const existing = await runner.query(
-      `SELECT * FROM anonymous_customers WHERE customer_code = $1`,
-      [providedCode]
+      `SELECT * FROM anonymous_customers 
+       WHERE UPPER(customer_code) = UPPER($1) 
+          OR UPPER(customer_code) = UPPER($2)
+          OR customer_code ILIKE $3
+       LIMIT 1`,
+      [cleanProvided, custVar, `%${cleanProvided}%`]
     );
     if (existing.rows.length > 0) {
       return existing.rows[0];
     }
   }
 
-  // Create new anonymous customer
-  const id = `cust-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-  const customerCode = providedCode || generateAnonymousCode('CUST');
+  // Create new anonymous customer with guaranteed unique 8-character token
+  const id = `cust-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+  const cleanCode = providedCode ? String(providedCode).trim().toUpperCase() : null;
+  const customerCode = cleanCode 
+    ? (cleanCode.startsWith('CUST-') ? cleanCode : `CUST-${cleanCode}`)
+    : generateAnonymousCode('CUST');
   const newReferralCode = generateAnonymousCode('REF');
 
   let referredById = null;
   if (referralCode && referralCode !== newReferralCode) {
+    const cleanRef = String(referralCode).trim().toUpperCase();
     const referrerRes = await runner.query(
-      `SELECT id FROM anonymous_customers WHERE referral_code = $1`,
-      [referralCode]
+      `SELECT id FROM anonymous_customers WHERE UPPER(referral_code) = UPPER($1) LIMIT 1`,
+      [cleanRef]
     );
     if (referrerRes.rows.length > 0) {
       referredById = referrerRes.rows[0].id;

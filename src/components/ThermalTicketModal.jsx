@@ -26,8 +26,9 @@ export function ThermalTicketModal({ ticketData, onClose, lang = 'uz' }) {
 
   // Generate real, high-resolution scannable QR Code for anonymous loyalty
   useEffect(() => {
-    const code = ticket?.customerCode || ticket?.clientIdentifier;
-    if (!code) return;
+    const raw = ticket?.customerCode || ticket?.clientIdentifier;
+    if (!raw) return;
+    const code = String(raw).trim().toUpperCase();
     QRCode.toDataURL(code, {
       width: 140,
       margin: 1,
@@ -125,7 +126,7 @@ export function ThermalTicketModal({ ticketData, onClose, lang = 'uz' }) {
                 </div>
                 <div className="flex items-center gap-1 font-mono text-[11px] font-black tracking-wider text-emerald-950 mt-1">
                   <QrCode className="w-3.5 h-3.5 text-emerald-700" />
-                  <span>{ticket.customerCode}</span>
+                  <span>{String(ticket.customerCode || ticket.clientIdentifier || '').toUpperCase()}</span>
                 </div>
                 <div className="text-[9px] text-slate-500 text-center font-bold mt-0.5 leading-tight">
                   {lang === 'uz'
