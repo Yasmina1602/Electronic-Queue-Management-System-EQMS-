@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import jsQR from 'jsqr';
 import { useQueue } from '../context/QueueContext';
 import { ThermalTicketModal } from './ThermalTicketModal';
 import { api } from '../utils/api';
@@ -20,7 +21,6 @@ import {
   Gift,
   X,
   Camera,
-  CameraOff,
 } from 'lucide-react';
 
 export function KioskView() {
@@ -129,69 +129,114 @@ export function KioskView() {
   };
 
   const [scanningCamera, setScanningCamera] = useState(false);
+  const [cameraError, setCameraError] = useState(false);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  const animFrameIdRef = useRef(null);
 
-  useEffect(() => {
-    return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-      }
-    };
-  }, []);
+  // Play subtle confirmation beep on successful QR scan
+  const playBeep = () => {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1046.5, ctx.currentTime);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.18);
+    } catch (e) {}
+  };
 
   const startCamera = async () => {
     try {
+      setCameraError(false);
       setScanningCamera(true);
+
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } },
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
       });
       streamRef.current = stream;
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.setAttribute('playsinline', 'true');
+        await videoRef.current.play().catch(() => {});
       }
-      if ('BarcodeDetector' in window) {
-        const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
-        const scan = async () => {
-          if (!streamRef.current) return;
-          try {
-            if (videoRef.current && videoRef.current.readyState === 4) {
-              const barcodes = await detector.detect(videoRef.current);
-              if (barcodes.length > 0) {
-                const val = (barcodes[0].rawValue || barcodes[0].displayValue || '').trim();
-                if (val) {
-                  stopCamera();
-                  setLoyaltyCodeInput(val);
-                  verifyLoyaltyCode(val);
-                  return;
-                }
-              }
-            }
-          } catch (e) {
-            // davom etadi
+
+      // Offscreen canvas to scan video frames with jsQR
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+      const scan = () => {
+        if (!streamRef.current) return;
+        const video = videoRef.current;
+        if (video && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: 'attemptBoth',
+          });
+
+          if (code && code.data && code.data.trim()) {
+            const val = code.data.trim();
+            playBeep();
+            stopCamera();
+            setLoyaltyCodeInput(val);
+            verifyLoyaltyCode(val);
+            return;
           }
-          requestAnimationFrame(scan);
-        };
-        requestAnimationFrame(scan);
-      }
+        }
+        animFrameIdRef.current = requestAnimationFrame(scan);
+      };
+
+      animFrameIdRef.current = requestAnimationFrame(scan);
     } catch (err) {
       console.warn('Camera error:', err);
-      stopCamera();
-      setLoyaltyMessage(
-        lang === 'uz'
-          ? 'ℹ Kameraga ulanib bo‘lmadi. Kodni quyida kiritishingiz mumkin.'
-          : 'ℹ Камера недоступна. Введите код вручную.'
-      );
+      setScanningCamera(false);
+      setCameraError(true);
     }
   };
 
   const stopCamera = () => {
+    if (animFrameIdRef.current) {
+      cancelAnimationFrame(animFrameIdRef.current);
+      animFrameIdRef.current = null;
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
     setScanningCamera(false);
   };
+
+  // Kiosk oynasidan sodiqlik va QR tugmasi bosilgan zahoti kamera avtomatik ishga tushadi
+  useEffect(() => {
+    if (showLoyaltyModal) {
+      startCamera();
+    } else {
+      stopCamera();
+    }
+    return () => {
+      stopCamera();
+    };
+  }, [showLoyaltyModal]);
 
   // Verify anonymous loyalty code or friend referral code
   const verifyLoyaltyCode = async (rawCode) => {
@@ -478,37 +523,23 @@ export function KioskView() {
                 : 'Введите код с предыдущего чека или реферальный промокод друга:'}
             </p>
 
-            {/* Kamera orqali tezkor skanerlash tugmasi */}
-            <button
-              type="button"
-              onClick={scanningCamera ? stopCamera : startCamera}
-              className={`w-full mb-3 py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                scanningCamera
-                  ? 'border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100'
-                  : 'border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900'
-              }`}
-            >
-              {scanningCamera ? (
-                <>
-                  <CameraOff className="w-4 h-4 text-rose-600" />
-                  <span>{lang === 'uz' ? 'Kamerani to‘xtatish' : 'Выключить камеру'}</span>
-                </>
-              ) : (
-                <>
-                  <Camera className="w-4 h-4 text-emerald-700" />
-                  <span>{lang === 'uz' ? '📷 Kamera orqali tezkor skanerlash (QR)' : '📷 Быстро сканировать камерой'}</span>
-                </>
-              )}
-            </button>
-
-            {/* Kamera video oynasi */}
-            {scanningCamera && (
-              <div className="relative mb-3 rounded-2xl overflow-hidden border-2 border-emerald-600 bg-black aspect-video flex items-center justify-center">
+            {/* Kamera video oynasi - Avtomatik faol holatda ochiladi (Kamerani to'xtatish tugmasisiz) */}
+            {!(loyaltyMessage && (loyaltyMessage.startsWith('✓') || loyaltyMessage.startsWith('Topildi'))) && (
+              <div className="relative mb-3 rounded-2xl overflow-hidden border-2 border-emerald-600 bg-black aspect-video flex items-center justify-center shadow-inner">
                 <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
                 <div className="absolute inset-0 border-2 border-dashed border-emerald-400 m-5 rounded-xl pointer-events-none animate-pulse"></div>
-                <div className="absolute bottom-2 bg-black/70 backdrop-blur-xs text-white text-[10px] px-3 py-1 rounded-full font-bold">
-                  {lang === 'uz' ? 'Chekdagi QR-kodni ramkaga tuting' : 'Наведите QR-код на рамку'}
+                <div className="absolute bottom-2 bg-black/75 backdrop-blur-xs text-white text-[11px] px-3.5 py-1 rounded-full font-bold flex items-center gap-1.5 shadow">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                  <span>{lang === 'uz' ? 'Chekdagi QR-kodni ramkaga tuting' : 'Наведите QR-код на рамку'}</span>
                 </div>
+              </div>
+            )}
+
+            {cameraError && !(loyaltyMessage && (loyaltyMessage.startsWith('✓') || loyaltyMessage.startsWith('Topildi'))) && (
+              <div className="text-xs text-amber-900 bg-amber-50 p-2.5 rounded-xl border border-amber-200 mb-3">
+                {lang === 'uz'
+                  ? 'ℹ Kameraga ulanib bo‘lmadi. Kodni quyidagi maydonga kiritishingiz mumkin.'
+                  : 'ℹ Камера недоступна. Введите код в поле ниже.'}
               </div>
             )}
 
