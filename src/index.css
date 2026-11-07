@@ -119,3 +119,19 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(71, 85, 105, 1);
 }
+
+/* Light Kiosk Scrollbar */
+.kiosk-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.kiosk-scrollbar::-webkit-scrollbar-track {
+  background: rgba(6, 78, 59, 0.05);
+  border-radius: 9999px;
+}
+.kiosk-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(6, 78, 59, 0.25);
+  border-radius: 9999px;
+}
+.kiosk-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(6, 78, 59, 0.45);
+}
