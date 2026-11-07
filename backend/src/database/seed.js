@@ -41,9 +41,9 @@ export async function runSeed() {
 
   // 4. Services
   await query(`
-    INSERT INTO services (id, name, description, prefix, avg_duration_min, icon, priority_weight, category, active) VALUES
-      ('srv-general', 'Xizmatlar', 'Kassa, Kreditlar, Omonatlar, Kartalar va ma’lumotlar', 'X', 8, 'Layers', 1, 'general', true),
-      ('srv-accounting', 'Buxgalteriya', 'Hisob-kitoblar, Soliq, To‘lov topshiriqlari va yuridik shaxslar', 'B', 12, 'Calculator', 2, 'accounting', true)
+    INSERT INTO services (id, name, description, prefix, avg_duration_min, icon, priority_weight, category, active, display_order) VALUES
+      ('srv-accounting', 'Buxgalteriya', 'Hisob-kitoblar, Soliq, To‘lov topshiriqlari va yuridik shaxslar', 'B', 12, 'Calculator', 2, 'accounting', true, 1),
+      ('srv-general', 'Xizmatlar', 'Kassa, Kreditlar, Omonatlar, Kartalar va ma’lumotlar', 'X', 8, 'Layers', 1, 'general', true, 2)
     ON CONFLICT (id) DO UPDATE SET 
       name = EXCLUDED.name,
       description = EXCLUDED.description,
@@ -51,6 +51,20 @@ export async function runSeed() {
       avg_duration_min = EXCLUDED.avg_duration_min,
       priority_weight = EXCLUDED.priority_weight,
       category = EXCLUDED.category,
+      active = EXCLUDED.active,
+      display_order = COALESCE(services.display_order, EXCLUDED.display_order);
+  `);
+
+  // 4.1. Sodiqlik Chegirma Darajalari (Superadmin va Admin sozlay oladi)
+  await query(`
+    INSERT INTO loyalty_tiers (id, min_visits, discount_percent, description, active) VALUES
+      ('tier-3', 3, 5, 'Doimiy mijoz (3-tashrif)', true),
+      ('tier-5', 5, 10, 'Kumush mijoz (5-tashrif)', true),
+      ('tier-10', 10, 15, 'Oltin mijoz (10-tashrif)', true)
+    ON CONFLICT (id) DO UPDATE SET
+      min_visits = EXCLUDED.min_visits,
+      discount_percent = EXCLUDED.discount_percent,
+      description = EXCLUDED.description,
       active = EXCLUDED.active;
   `);
 

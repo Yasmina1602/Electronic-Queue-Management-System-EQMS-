@@ -1,5 +1,6 @@
 import { query } from '../config/db.js';
-import { calculateDiscount } from '../services/loyaltyService.js';
+import { calculateDiscount, refreshLoyaltyTiersCache } from '../services/loyaltyService.js';
+import { getIO } from '../services/socketService.js';
 
 export async function lookupCustomer(req, res, next) {
   try {
@@ -122,6 +123,95 @@ export async function getLoyaltyStats(req, res, next) {
       topReferrers: topReferrersRes.rows,
       recentLogs: recentLogsRes.rows,
     });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getLoyaltyTiers(req, res, next) {
+  try {
+    const result = await query(`SELECT * FROM loyalty_tiers ORDER BY min_visits ASC`);
+    res.json({ success: true, tiers: result.rows });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function createLoyaltyTier(req, res, next) {
+  try {
+    const { minVisits, discountPercent, description } = req.body;
+    if (minVisits === undefined || discountPercent === undefined) {
+      return res.status(400).json({ success: false, error: 'Tashriflar soni va chegirma foizi kiritilishi shart!' });
+    }
+
+    const id = `tier-${Date.now()}`;
+    const result = await query(
+      `INSERT INTO loyalty_tiers (id, min_visits, discount_percent, description, active)
+       VALUES ($1, $2, $3, $4, true)
+       ON CONFLICT (min_visits) DO UPDATE SET discount_percent = EXCLUDED.discount_percent, description = EXCLUDED.description, active = true
+       RETURNING *`,
+      [id, Number(minVisits), Number(discountPercent), description || `Mijoz (${minVisits}-tashrif)`]
+    );
+
+    await refreshLoyaltyTiersCache();
+    const io = getIO();
+    if (io) io.emit('loyalty:tiers_updated', result.rows[0]);
+
+    res.status(201).json({ success: true, tier: result.rows[0] });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateLoyaltyTier(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { minVisits, discountPercent, description, active } = req.body;
+
+    const result = await query(
+      `UPDATE loyalty_tiers 
+       SET min_visits = COALESCE($1, min_visits),
+           discount_percent = COALESCE($2, discount_percent),
+           description = COALESCE($3, description),
+           active = COALESCE($4, active)
+       WHERE id = $5
+       RETURNING *`,
+      [
+        minVisits !== undefined ? Number(minVisits) : null,
+        discountPercent !== undefined ? Number(discountPercent) : null,
+        description !== undefined ? description : null,
+        active !== undefined ? active : null,
+        id,
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Chegirma darajasi topilmadi!' });
+    }
+
+    await refreshLoyaltyTiersCache();
+    const io = getIO();
+    if (io) io.emit('loyalty:tiers_updated', result.rows[0]);
+
+    res.json({ success: true, tier: result.rows[0] });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteLoyaltyTier(req, res, next) {
+  try {
+    const { id } = req.params;
+    const result = await query(`DELETE FROM loyalty_tiers WHERE id = $1 RETURNING *`, [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Chegirma darajasi topilmadi!' });
+    }
+
+    await refreshLoyaltyTiersCache();
+    const io = getIO();
+    if (io) io.emit('loyalty:tiers_updated', { deletedId: id });
+
+    res.json({ success: true, message: 'Chegirma darajasi o‘chirildi', tier: result.rows[0] });
   } catch (err) {
     next(err);
   }

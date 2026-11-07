@@ -93,6 +93,13 @@ export function QueueProvider({ children }) {
   const [auditLogs, setAuditLogs] = useState(() => getSafeArray(STORAGE_KEY + '_audit', INITIAL_AUDIT_LOGS));
   const [staffRequests, setStaffRequests] = useState(() => getSafeArray(STORAGE_KEY + '_staff_requests', []));
 
+  const DEFAULT_LOYALTY_TIERS = [
+    { id: 'tier-3', min_visits: 3, discount_percent: 5, description: 'Doimiy mijoz (3-tashrif)', active: true },
+    { id: 'tier-5', min_visits: 5, discount_percent: 10, description: 'Kumush mijoz (5-tashrif)', active: true },
+    { id: 'tier-10', min_visits: 10, discount_percent: 15, description: 'Oltin mijoz (10-tashrif)', active: true },
+  ];
+  const [loyaltyTiers, setLoyaltyTiers] = useState(() => getSafeArray(STORAGE_KEY + '_loyalty_tiers', DEFAULT_LOYALTY_TIERS));
+
   const [activeBranchId, setActiveBranchId] = useState(() => {
     try {
       localStorage.setItem(STORAGE_KEY + '_branchId', 'branch-1');
@@ -156,6 +163,13 @@ export function QueueProvider({ children }) {
         if (data.auditLogs?.length) setAuditLogs(data.auditLogs);
         setIsBackendConnected(true);
       }
+
+      try {
+        const tiersRes = await api.getLoyaltyTiers();
+        if (tiersRes && tiersRes.success && Array.isArray(tiersRes.tiers)) {
+          setLoyaltyTiers(tiersRes.tiers.sort((a, b) => a.min_visits - b.min_visits));
+        }
+      } catch (err) {}
     } catch (e) {
       // Backend may be offline or starting, silent fallback to local storage
       setIsBackendConnected(false);
@@ -253,6 +267,7 @@ export function QueueProvider({ children }) {
       socket.on('queue:cleared', () => syncWithBackend());
       socket.on('service:updated', () => syncWithBackend());
       socket.on('service:deleted', () => syncWithBackend());
+      socket.on('loyalty:tiers_updated', () => syncWithBackend());
     } catch (e) {
       console.warn('Socket connection error:', e);
     }
@@ -672,6 +687,7 @@ export function QueueProvider({ children }) {
         const formatted = {
           ...res.service,
           avgDurationMin: res.service.avg_duration_min || res.service.avgDurationMin || 10,
+          display_order: res.service.display_order ?? res.service.displayOrder ?? serviceData.displayOrder ?? 1,
         };
         setServices((prev) => [...prev, formatted]);
         syncWithBackend();
@@ -686,6 +702,7 @@ export function QueueProvider({ children }) {
         prefix: serviceData.prefix,
         description: serviceData.description || '',
         avgDurationMin: serviceData.avgDurationMin || 10,
+        display_order: Number(serviceData.displayOrder) || 1,
         active: serviceData.active !== false,
       };
       setServices((prev) => [...prev, newSrv]);
@@ -704,6 +721,7 @@ export function QueueProvider({ children }) {
                   ...s,
                   ...res.service,
                   avgDurationMin: res.service.avg_duration_min || res.service.avgDurationMin,
+                  display_order: res.service.display_order ?? res.service.displayOrder ?? serviceData.displayOrder ?? s.display_order,
                 }
               : s
           )
@@ -734,6 +752,69 @@ export function QueueProvider({ children }) {
       console.warn('Backend deleteService error:', e);
     }
     setServices((prev) => prev.filter((s) => s.id !== serviceId));
+    syncWithBackend();
+    return { success: true };
+  };
+
+  const addLoyaltyTier = async (tierData) => {
+    try {
+      const res = await api.createLoyaltyTier(tierData);
+      if (res.success && res.tier) {
+        setLoyaltyTiers((prev) => {
+          const filtered = prev.filter((t) => t.id !== res.tier.id && Number(t.min_visits) !== Number(res.tier.min_visits));
+          return [...filtered, res.tier].sort((a, b) => Number(a.min_visits) - Number(b.min_visits));
+        });
+        syncWithBackend();
+        return { success: true, tier: res.tier };
+      }
+      return { success: false, error: res?.error || 'Chegirma qo‘shishda xatolik' };
+    } catch (e) {
+      const newT = {
+        id: `tier-${Date.now()}`,
+        min_visits: Number(tierData.minVisits),
+        discount_percent: Number(tierData.discountPercent),
+        description: tierData.description || `${tierData.minVisits}-tashrif chegirmasi`,
+        active: true,
+      };
+      setLoyaltyTiers((prev) => [...prev.filter((t) => Number(t.min_visits) !== newT.min_visits), newT].sort((a, b) => a.min_visits - b.min_visits));
+      return { success: true, tier: newT };
+    }
+  };
+
+  const updateLoyaltyTier = async (tierId, tierData) => {
+    try {
+      const res = await api.updateLoyaltyTier(tierId, tierData);
+      if (res.success && res.tier) {
+        setLoyaltyTiers((prev) =>
+          prev.map((t) => (t.id === tierId ? { ...t, ...res.tier } : t)).sort((a, b) => Number(a.min_visits) - Number(b.min_visits))
+        );
+        syncWithBackend();
+        return { success: true, tier: res.tier };
+      }
+      return { success: false, error: res?.error || 'Chegirmani tahrirlashda xatolik' };
+    } catch (e) {
+      setLoyaltyTiers((prev) =>
+        prev.map((t) =>
+          t.id === tierId
+            ? {
+                ...t,
+                min_visits: tierData.minVisits !== undefined ? Number(tierData.minVisits) : t.min_visits,
+                discount_percent: tierData.discountPercent !== undefined ? Number(tierData.discountPercent) : t.discount_percent,
+                description: tierData.description !== undefined ? tierData.description : t.description,
+                active: tierData.active !== undefined ? tierData.active : t.active,
+              }
+            : t
+        ).sort((a, b) => Number(a.min_visits) - Number(b.min_visits))
+      );
+      return { success: true };
+    }
+  };
+
+  const deleteLoyaltyTier = async (tierId) => {
+    try {
+      await api.deleteLoyaltyTier(tierId);
+    } catch (e) {}
+    setLoyaltyTiers((prev) => prev.filter((t) => t.id !== tierId));
     syncWithBackend();
     return { success: true };
   };
@@ -801,6 +882,10 @@ export function QueueProvider({ children }) {
         updateService,
         deleteService,
         toggleServiceActive,
+        loyaltyTiers,
+        addLoyaltyTier,
+        updateLoyaltyTier,
+        deleteLoyaltyTier,
         resetToDemo,
         clearQueue,
         syncWithBackend,

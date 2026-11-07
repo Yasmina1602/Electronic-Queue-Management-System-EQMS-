@@ -31,6 +31,10 @@ import {
   Sliders,
   Eye,
   EyeOff,
+  Gift,
+  Percent,
+  Sparkles,
+  Tag,
 } from 'lucide-react';
 
 export function AdminDashboard() {
@@ -52,6 +56,10 @@ export function AdminDashboard() {
     addService,
     updateService,
     deleteService,
+    loyaltyTiers = [],
+    addLoyaltyTier,
+    updateLoyaltyTier,
+    deleteLoyaltyTier,
     resetToDemo,
     clearQueue,
     audioEnabled,
@@ -98,13 +106,14 @@ export function AdminDashboard() {
   const [editWindow, setEditWindow] = useState('');
   const [editPhone, setEditPhone] = useState('');
 
-  // Form state for editing service/department (Talab: superadmin bo'limlarni tahrirlashi)
+  // Form state for editing service/department (Talab: superadmin bo'limlarni tahrirlashi, ketma-ketlik belgilash)
   const [showEditServiceModal, setShowEditServiceModal] = useState(false);
   const [editingService, setEditingService] = useState(null);
   const [editServiceName, setEditServiceName] = useState('');
   const [editServicePrefix, setEditServicePrefix] = useState('');
   const [editServiceDescription, setEditServiceDescription] = useState('');
   const [editServiceActive, setEditServiceActive] = useState(true);
+  const [editServiceDisplayOrder, setEditServiceDisplayOrder] = useState(1);
 
   // Form state for adding new service/department (Talab: bo'limlar oynasiga "bo'lim qo'shish" tugmasini qo'sh)
   const [showAddServiceModal, setShowAddServiceModal] = useState(false);
@@ -112,6 +121,15 @@ export function AdminDashboard() {
   const [newServicePrefix, setNewServicePrefix] = useState('');
   const [newServiceDescription, setNewServiceDescription] = useState('');
   const [newServiceActive, setNewServiceActive] = useState(true);
+  const [newServiceDisplayOrder, setNewServiceDisplayOrder] = useState(1);
+
+  // Form state for Loyalty & Discount Tiers (Superadmin va Admin sozlay oladi)
+  const [showTierModal, setShowTierModal] = useState(false);
+  const [editingTier, setEditingTier] = useState(null);
+  const [tierMinVisits, setTierMinVisits] = useState(3);
+  const [tierDiscountPercent, setTierDiscountPercent] = useState(5);
+  const [tierDescription, setTierDescription] = useState('');
+  const [tierActive, setTierActive] = useState(true);
 
   const currentBranch = branches.find((b) => b.id === activeBranchId) || branches[0];
   const branchTickets = tickets.filter((t) => (t.branchId || t.branch_id || 'branch-1') === (activeBranchId || 'branch-1'));
@@ -261,6 +279,7 @@ export function AdminDashboard() {
     setEditServicePrefix(srv.prefix || 'X');
     setEditServiceDescription(srv.description || '');
     setEditServiceActive(srv.active !== false);
+    setEditServiceDisplayOrder(srv.display_order ?? srv.displayOrder ?? 1);
     setShowEditServiceModal(true);
   };
 
@@ -275,10 +294,11 @@ export function AdminDashboard() {
       avgDurationMin: editingService.avgDurationMin || editingService.avg_duration_min || 8,
       description: editServiceDescription.trim(),
       active: editServiceActive,
+      displayOrder: Number(editServiceDisplayOrder) || 1,
     });
 
     if (res?.success) {
-      setNotification(`"${editServiceName}" bo‘limi muvaffaqiyatli yangilandi va Kioskda aks ettirildi!`);
+      setNotification(`"${editServiceName}" bo‘limi muvaffaqiyatli yangilandi va Kioskda #${editServiceDisplayOrder}-tartibda o‘rnatildi!`);
       setTimeout(() => setNotification(null), 3500);
       setShowEditServiceModal(false);
       setEditingService(null);
@@ -294,6 +314,7 @@ export function AdminDashboard() {
     setNewServicePrefix('');
     setNewServiceDescription('');
     setNewServiceActive(true);
+    setNewServiceDisplayOrder(services.length + 1);
     setShowAddServiceModal(true);
   };
 
@@ -308,10 +329,11 @@ export function AdminDashboard() {
       description: newServiceDescription.trim(),
       avgDurationMin: 10,
       active: newServiceActive,
+      displayOrder: Number(newServiceDisplayOrder) || 1,
     });
 
     if (res?.success) {
-      setNotification(`"${newServiceName}" yangi bo‘limi muvaffaqiyatli qo‘shildi va Kioskda aks ettirildi!`);
+      setNotification(`"${newServiceName}" yangi bo‘limi muvaffaqiyatli qo‘shildi va Kioskda #${newServiceDisplayOrder}-tartibda o‘rnatildi!`);
       setTimeout(() => setNotification(null), 3500);
       setShowAddServiceModal(false);
       setNewServiceName('');
@@ -320,6 +342,72 @@ export function AdminDashboard() {
     } else {
       setNotification(res?.error || 'Bo‘lim qo‘shishda xatolik yuz berdi!');
       setTimeout(() => setNotification(null), 4000);
+    }
+  };
+
+  // Loyalty & Discount Tiers handlers (Superadmin va Admin boshqaruvi)
+  const openAddTierModal = () => {
+    setEditingTier(null);
+    setTierMinVisits(3);
+    setTierDiscountPercent(5);
+    setTierDescription('');
+    setTierActive(true);
+    setShowTierModal(true);
+  };
+
+  const openEditTierModal = (tier) => {
+    setEditingTier(tier);
+    setTierMinVisits(tier.min_visits ?? tier.minVisits ?? 3);
+    setTierDiscountPercent(tier.discount_percent ?? tier.discountPercent ?? 5);
+    setTierDescription(tier.description || '');
+    setTierActive(tier.active !== false);
+    setShowTierModal(true);
+  };
+
+  const handleTierSubmit = async (e) => {
+    e.preventDefault();
+    const payload = {
+      minVisits: Number(tierMinVisits) || 1,
+      discountPercent: Number(tierDiscountPercent) || 0,
+      description: tierDescription.trim(),
+      active: tierActive,
+    };
+
+    if (editingTier?.id) {
+      const res = await updateLoyaltyTier(editingTier.id, payload);
+      if (res?.success) {
+        setNotification(`Chegirma darajasi (${payload.discountPercent}%) muvaffaqiyatli yangilandi!`);
+        setTimeout(() => setNotification(null), 3500);
+        setShowTierModal(false);
+        setEditingTier(null);
+      } else {
+        setNotification(res?.error || 'Chegirmani yangilashda xatolik yuz berdi!');
+        setTimeout(() => setNotification(null), 4000);
+      }
+    } else {
+      const res = await addLoyaltyTier(payload);
+      if (res?.success) {
+        setNotification(`Yangi chegirma darajasi (${payload.discountPercent}%) muvaffaqiyatli qo‘shildi!`);
+        setTimeout(() => setNotification(null), 3500);
+        setShowTierModal(false);
+      } else {
+        setNotification(res?.error || 'Chegirma qo‘shishda xatolik yuz berdi!');
+        setTimeout(() => setNotification(null), 4000);
+      }
+    }
+  };
+
+  const handleDeleteTier = async (tier) => {
+    const desc = tier.description || `${tier.discount_percent ?? tier.discountPercent}% chegirma`;
+    if (window.confirm(`Haqiqatan ham "${desc}" darajasini o‘chirmoqchimisiz?`)) {
+      const res = await deleteLoyaltyTier(tier.id);
+      if (res?.success) {
+        setNotification(`Chegirma darajasi muvaffaqiyatli o‘chirildi!`);
+        setTimeout(() => setNotification(null), 3500);
+      } else {
+        setNotification(res?.error || 'Chegirmani o‘chirishda xatolik yuz berdi!');
+        setTimeout(() => setNotification(null), 4000);
+      }
     }
   };
 
@@ -585,6 +673,28 @@ export function AdminDashboard() {
               </button>
             </>
           )}
+
+          {/* Sodiqlik va Chegirma boshqaruvi (Superadmin va Admin uchun) */}
+          <button
+            onClick={() => setActiveTab('LOYALTY')}
+            className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+              activeTab === 'LOYALTY'
+                ? 'bg-amber-600 text-white shadow-md shadow-amber-900/20 scale-[1.02]'
+                : 'bg-amber-50/80 text-amber-950 border border-amber-200 hover:bg-amber-100'
+            }`}
+          >
+            <Gift className="w-4 h-4" />
+            <span>Chegirma va Sodiqlik</span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-[11px] font-mono ${
+                activeTab === 'LOYALTY'
+                  ? 'bg-amber-950 text-amber-200'
+                  : 'bg-white text-amber-800 border border-amber-200'
+              }`}
+            >
+              {loyaltyTiers.length} ta
+            </span>
+          </button>
         </div>
 
         {/* 1. XODIMLAR JADVALI */}
@@ -938,7 +1048,8 @@ export function AdminDashboard() {
               <table className="w-full text-left text-xs">
                 <thead className="bg-teal-950 text-white uppercase text-[11px] tracking-wider">
                   <tr>
-                    <th className="p-3.5 rounded-l-2xl">Prefiks</th>
+                    <th className="p-3.5 rounded-l-2xl">Tartib</th>
+                    <th className="p-3.5">Prefiks</th>
                     <th className="p-3.5">Bo‘lim Nomi</th>
                     <th className="p-3.5">O‘rtacha Xizmat Vaqti</th>
                     <th className="p-3.5">Bo‘lim Tavsifi (Kioskda chiqadi)</th>
@@ -947,8 +1058,15 @@ export function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-teal-100 text-slate-700">
-                  {services.map((srv) => (
+                  {[...services]
+                    .sort((a, b) => (a.display_order ?? a.displayOrder ?? 1) - (b.display_order ?? b.displayOrder ?? 1))
+                    .map((srv) => (
                     <tr key={srv.id} className="hover:bg-teal-50/60 transition-colors">
+                      <td className="p-3.5 font-black">
+                        <span className="px-2.5 py-1 rounded-xl bg-teal-900 text-teal-100 font-mono text-xs border border-teal-700">
+                          #{srv.display_order ?? srv.displayOrder ?? 1}
+                        </span>
+                      </td>
                       <td className="p-3.5 font-black text-teal-950">
                         <span className="px-3 py-1 rounded-xl bg-teal-100 text-teal-900 font-mono text-sm border border-teal-300">
                           {srv.prefix}
@@ -1007,8 +1125,118 @@ export function AdminDashboard() {
                   ))}
                   {services.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="p-8 text-center text-slate-400 font-medium">
+                      <td colSpan={7} className="p-8 text-center text-slate-400 font-medium">
                         Hozircha birorta ham bo‘lim mavjud emas
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* 4. SODIQLIK VA CHEGIRMALAR DARAJALARI */}
+        {activeTab === 'LOYALTY' && (
+          <div className="bg-white/95 backdrop-blur-md rounded-3xl p-6 shadow-xl border border-amber-200 animate-fade-in">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-amber-100">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-black uppercase tracking-wider mb-1 border border-amber-200">
+                  <Percent className="w-3.5 h-3.5 text-amber-800" />
+                  Mijozlarni rag‘batlantirish
+                </div>
+                <h2 className="text-lg font-black text-amber-950 tracking-tight flex items-center gap-2 mt-1">
+                  <Gift className="w-5 h-5 text-amber-700" />
+                  Sodiqlik va Chegirma Darajalari Boshqaruvi
+                </h2>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  Mijoz kioskda QR-kod yoki ID kiritganda tashriflar soniga qarab beriladigan chegirma foizlarini sozlash
+                </p>
+              </div>
+
+              <button
+                onClick={openAddTierModal}
+                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs shadow-md flex items-center gap-2 transition-all cursor-pointer hover:scale-[1.02] active:scale-95"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>Chegirma qo‘shish</span>
+              </button>
+            </div>
+
+            {/* Chegirmalar jadvali */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-amber-950 text-white uppercase text-[11px] tracking-wider">
+                  <tr>
+                    <th className="p-3.5 rounded-l-2xl">Minimal Tashriflar</th>
+                    <th className="p-3.5">Chegirma Foizi</th>
+                    <th className="p-3.5">Daraja Tavsifi / Nomlanishi</th>
+                    <th className="p-3.5">Holati</th>
+                    <th className="p-3.5 text-right rounded-r-2xl">Amallar</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-amber-100 text-slate-700">
+                  {[...loyaltyTiers]
+                    .sort((a, b) => (a.min_visits ?? a.minVisits ?? 0) - (b.min_visits ?? b.minVisits ?? 0))
+                    .map((tier) => (
+                    <tr key={tier.id} className="hover:bg-amber-50/60 transition-colors">
+                      <td className="p-3.5 font-black text-amber-950">
+                        <span className="px-3 py-1 rounded-xl bg-amber-100 text-amber-900 font-mono text-sm border border-amber-300">
+                          ≥ {tier.min_visits ?? tier.minVisits} ta tashrif
+                        </span>
+                      </td>
+                      <td className="p-3.5">
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 font-black text-sm border border-emerald-300">
+                          <Percent className="w-3.5 h-3.5 text-emerald-700" />
+                          {tier.discount_percent ?? tier.discountPercent}%
+                        </span>
+                      </td>
+                      <td className="p-3.5">
+                        <div className="font-extrabold text-slate-900 text-sm">
+                          {tier.description || 'Chegirma darajasi'}
+                        </div>
+                      </td>
+                      <td className="p-3.5">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black ${
+                            tier.active !== false
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              : 'bg-slate-100 text-slate-600 border border-slate-300'
+                          }`}
+                        >
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              tier.active !== false ? 'bg-emerald-600' : 'bg-slate-400'
+                            }`}
+                          ></span>
+                          {tier.active !== false ? 'Faol' : 'Nofaol'}
+                        </span>
+                      </td>
+                      <td className="p-3.5 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => openEditTierModal(tier)}
+                            className="px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                            <span>Tahrirlash</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTier(tier)}
+                            className="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1"
+                            title="Chegirmani o‘chirish"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>O‘chirish</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {loyaltyTiers.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-slate-400 font-medium">
+                        Hozircha chegirma darajalari belgilanmagan
                       </td>
                     </tr>
                   )}
@@ -1406,6 +1634,21 @@ export function AdminDashboard() {
 
               <div>
                 <label className="block mb-1 text-slate-800 uppercase tracking-wider text-[11px]">
+                  Kioskda Ketma-ketlik Tartibi (1, 2, 3... eng kichigi yuqorida):
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={999}
+                  required
+                  value={editServiceDisplayOrder}
+                  onChange={(e) => setEditServiceDisplayOrder(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-teal-700 text-slate-900 font-mono font-bold text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1 text-slate-800 uppercase tracking-wider text-[11px]">
                   Bo‘lim Tavsifi (Kioskda mijozga ko‘rinadi):
                 </label>
                 <textarea
@@ -1504,6 +1747,21 @@ export function AdminDashboard() {
 
               <div>
                 <label className="block mb-1 text-slate-800 uppercase tracking-wider text-[11px]">
+                  Kioskda Ketma-ketlik Tartibi (1, 2, 3... eng kichigi yuqorida):
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={999}
+                  required
+                  value={newServiceDisplayOrder}
+                  onChange={(e) => setNewServiceDisplayOrder(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-teal-700 text-slate-900 font-mono font-bold text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1 text-slate-800 uppercase tracking-wider text-[11px]">
                   Bo‘lim Tavsifi (Kioskda mijozga ko‘rinadi):
                 </label>
                 <textarea
@@ -1542,6 +1800,115 @@ export function AdminDashboard() {
                 >
                   <Check className="w-4 h-4" />
                   <span>Qo‘shish</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Chegirma va Sodiqlik Darajasini Qo'shish / Tahrirlash */}
+      {showTierModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-amber-950/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border-4 border-amber-600 relative">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center border border-amber-200">
+                  <Gift className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900">
+                    {editingTier ? 'Chegirma Darajasini Tahrirlash' : 'Yangi Chegirma Darajasi'}
+                  </h3>
+                  <p className="text-xs text-slate-500">Mijozlar uchun chegirma parametrlarini belgilash</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowTierModal(false)}
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-xl transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleTierSubmit} className="space-y-4 text-xs font-bold text-slate-700">
+              <div>
+                <label className="block mb-1 text-slate-800 uppercase tracking-wider text-[11px]">
+                  Minimal Tashriflar Soni:
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={1000}
+                  required
+                  placeholder="Masalan: 3"
+                  value={tierMinVisits}
+                  onChange={(e) => setTierMinVisits(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-amber-600 text-slate-900 font-mono font-black text-sm"
+                />
+                <span className="text-[10px] text-slate-400 font-normal">Mijoz shu sondan ortiq tashrif buyurganida beriladi</span>
+              </div>
+
+              <div>
+                <label className="block mb-1 text-slate-800 uppercase tracking-wider text-[11px]">
+                  Chegirma Foizi (%):
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    step={1}
+                    required
+                    placeholder="Masalan: 5"
+                    value={tierDiscountPercent}
+                    onChange={(e) => setTierDiscountPercent(e.target.value)}
+                    className="w-full pl-3.5 pr-8 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-amber-600 text-slate-900 font-mono font-black text-sm"
+                  />
+                  <span className="absolute right-3.5 top-2.5 text-slate-500 font-black text-sm">%</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block mb-1 text-slate-800 uppercase tracking-wider text-[11px]">
+                  Daraja Tavsifi / Nomi:
+                </label>
+                <input
+                  type="text"
+                  placeholder="Masalan: 3-tashrif uchun 5% chegirma"
+                  value={tierDescription}
+                  onChange={(e) => setTierDescription(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-amber-600 text-slate-900 font-normal text-xs"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="tierActiveCheck"
+                  checked={tierActive}
+                  onChange={(e) => setTierActive(e.target.checked)}
+                  className="w-4 h-4 text-amber-600 rounded border-slate-300 focus:ring-amber-500 cursor-pointer"
+                />
+                <label htmlFor="tierActiveCheck" className="text-xs text-slate-800 cursor-pointer font-bold select-none">
+                  Chegirma faol holatda bo‘lsin
+                </label>
+              </div>
+
+              <div className="flex gap-3 pt-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setShowTierModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold transition-all cursor-pointer"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{editingTier ? 'Saqlash' : 'Qo‘shish'}</span>
                 </button>
               </div>
             </form>

@@ -29,8 +29,11 @@ CREATE TABLE IF NOT EXISTS services (
   priority_weight INT DEFAULT 1,
   category VARCHAR(50) DEFAULT 'general',
   active BOOLEAN DEFAULT TRUE,
+  display_order INT DEFAULT 1,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE services ADD COLUMN IF NOT EXISTS display_order INT DEFAULT 1;
 
 CREATE TABLE IF NOT EXISTS roles (
   id VARCHAR(50) PRIMARY KEY,
@@ -75,6 +78,16 @@ CREATE TABLE IF NOT EXISTS anonymous_customers (
   discount_percent INT DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   last_visit_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Loyalty discount rules configurable by Superadmin & Admin
+CREATE TABLE IF NOT EXISTS loyalty_tiers (
+  id VARCHAR(50) PRIMARY KEY,
+  min_visits INT NOT NULL UNIQUE,
+  discount_percent INT NOT NULL,
+  description VARCHAR(255),
+  active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS daily_sequences (

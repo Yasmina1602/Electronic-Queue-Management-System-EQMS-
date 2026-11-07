@@ -60,6 +60,10 @@ export const api = {
   // Loyalty & Referral (Section 10)
   lookupCustomer: (code) => request(`/loyalty/customer/${code}`),
   getLoyaltyStats: () => request('/loyalty/stats'),
+  getLoyaltyTiers: () => request('/loyalty/tiers'),
+  createLoyaltyTier: (payload) => request('/loyalty/tiers', { method: 'POST', body: JSON.stringify(payload) }),
+  updateLoyaltyTier: (id, payload) => request(`/loyalty/tiers/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteLoyaltyTier: (id) => request(`/loyalty/tiers/${id}`, { method: 'DELETE' }),
 
   // Devices
   restartDevice: (id) => request(`/devices/${id}/restart`, { method: 'POST' }),

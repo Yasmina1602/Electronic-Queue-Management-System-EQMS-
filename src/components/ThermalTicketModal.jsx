@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Printer, CheckCircle2, Clock, Users, X, Share2 } from 'lucide-react';
+import QRCode from 'qrcode';
+import { Printer, CheckCircle2, Clock, Users, X, Share2, QrCode } from 'lucide-react';
 
 export function ThermalTicketModal({ ticketData, onClose, lang = 'uz' }) {
-  const [autoCloseSeconds, setAutoCloseSeconds] = useState(10);
+  const [autoCloseSeconds, setAutoCloseSeconds] = useState(12);
+  const [qrDataUrl, setQrDataUrl] = useState('');
 
   useEffect(() => {
     if (!ticketData) return;
@@ -20,19 +22,47 @@ export function ThermalTicketModal({ ticketData, onClose, lang = 'uz' }) {
     return () => clearInterval(interval);
   }, [ticketData, onClose]);
 
+  const { ticket, service, branch, waitingAhead, estWaitTimeMin } = ticketData || {};
+
+  // Generate real, high-resolution scannable QR Code for anonymous loyalty
+  useEffect(() => {
+    const code = ticket?.customerCode || ticket?.clientIdentifier;
+    if (!code) return;
+    QRCode.toDataURL(code, {
+      width: 140,
+      margin: 1,
+      color: {
+        dark: '#022c22',
+        light: '#ffffff',
+      },
+    })
+      .then((url) => setQrDataUrl(url))
+      .catch((err) => console.error('QR code generation error:', err));
+  }, [ticket?.customerCode, ticket?.clientIdentifier]);
+
   if (!ticketData) return null;
 
-  const { ticket, service, branch, waitingAhead, estWaitTimeMin } = ticketData;
-  const formattedDate = new Date(ticket.createdAt).toLocaleDateString('uz-UZ', {
+  const formattedDate = new Date(ticket.createdAt).toLocaleDateString(lang === 'uz' ? 'uz-UZ' : 'ru-RU', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
   });
-  const formattedTime = new Date(ticket.createdAt).toLocaleTimeString('uz-UZ', {
+  const formattedTime = new Date(ticket.createdAt).toLocaleTimeString(lang === 'uz' ? 'uz-UZ' : 'ru-RU', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
   });
+
+  const getServiceName = () => {
+    if (lang === 'uz') return service?.name || 'Xizmat';
+    const nameLower = (service?.name || '').toLowerCase();
+    if (nameLower.includes('buxg') || service?.prefix === 'B') return 'Бухгалтерия и юр. лица';
+    if (nameLower.includes('it') || service?.prefix === 'I') return 'IT-услуги и техподдержка';
+    if (nameLower.includes('kredit')) return 'Кредитование и ипотека';
+    if (nameLower.includes('kassa')) return 'Касса и валютные операции';
+    if (nameLower.includes('xizmat') || service?.prefix === 'X') return 'Общие банковские услуги';
+    return service?.name || 'Услуга';
+  };
 
   const handlePrint = () => {
     window.print();
@@ -61,10 +91,10 @@ export function ThermalTicketModal({ ticketData, onClose, lang = 'uz' }) {
           {/* Header */}
           <div className="text-center border-b border-dashed border-slate-400 pb-3 mb-3">
             <div className="font-extrabold text-sm uppercase tracking-wide text-slate-900">
-              {lang === 'uz' ? (branch.name || 'Markaziy Bosh Filial') : 'Центральный Главный Филиал'}
+              {lang === 'uz' ? (branch?.name || 'Markaziy Bosh Filial') : 'Центральный Главный Филиал'}
             </div>
             <div className="text-[11px] text-slate-600 mt-0.5">
-              {lang === 'uz' ? (branch.address || 'Amir Temur shoh ko‘chasi, 1-uy') : 'ул. Амира Темура, 1'}
+              {lang === 'uz' ? (branch?.address || 'Amir Temur shoh ko‘chasi, 1-uy') : 'ул. Амира Темура, 1'}
             </div>
             <div className="text-[10px] text-slate-500 mt-0.5 font-bold">
               {lang === 'uz' ? 'ELEKTRON NAVBAT TIZIMI' : 'ЭЛЕКТРОННАЯ СИСТЕМА ОЧЕРЕДИ'}
@@ -72,7 +102,7 @@ export function ThermalTicketModal({ ticketData, onClose, lang = 'uz' }) {
           </div>
 
           {/* Ticket Number */}
-          <div className="text-center my-4 py-2 bg-slate-50 rounded-lg border border-slate-200">
+          <div className="text-center my-3 py-2 bg-slate-50 rounded-lg border border-slate-200">
             <div className="text-xs text-slate-500 uppercase tracking-widest font-semibold">
               {lang === 'uz' ? 'Sizning navbatingiz' : 'Ваш номер очереди'}
             </div>
@@ -80,33 +110,27 @@ export function ThermalTicketModal({ ticketData, onClose, lang = 'uz' }) {
               {ticket.ticketNumber}
             </div>
             <div className="text-xs font-bold text-emerald-800 px-2 line-clamp-1">
-              {lang === 'uz'
-                ? service.name
-                : (service.id === 'srv-accounting' ? 'Бухгалтерия и юр. лица' : 'Банковские услуги')}
+              {getServiceName()}
             </div>
-            {/* Section 10: Anonim Sodiqlik QR va Referral Kod */}
-            {(ticket.customerCode || ticket.referralCode) && (
-              <div className="mt-2 pt-2 border-t border-dashed border-slate-300 text-[10px] space-y-1 bg-emerald-50/60 p-2 rounded-lg">
-                {ticket.customerCode && (
-                  <div className="flex justify-between items-center text-emerald-950 font-bold">
-                    <span>{lang === 'uz' ? 'Sodiqlik QR-kod:' : 'Код лояльности:'}</span>
-                    <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-emerald-300">
-                      {ticket.customerCode}
-                    </span>
-                  </div>
-                )}
-                {ticket.referralCode && (
-                  <div className="flex justify-between items-center text-emerald-900 font-bold">
-                    <span>{lang === 'uz' ? 'Do‘stga ulashish:' : 'Промокод друга:'}</span>
-                    <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-emerald-300">
-                      {ticket.referralCode}
-                    </span>
-                  </div>
-                )}
-                <div className="text-[9px] text-slate-500 text-center mt-1">
+
+            {/* Section 10: Real Scannable QR Code Image */}
+            {qrDataUrl && (
+              <div className="mt-2.5 pt-2 border-t border-dashed border-slate-300 flex flex-col items-center">
+                <div className="p-1.5 bg-white rounded-xl border border-slate-300 shadow-2xs">
+                  <img
+                    src={qrDataUrl}
+                    alt={`QR-${ticket.customerCode}`}
+                    className="w-24 h-24 object-contain"
+                  />
+                </div>
+                <div className="flex items-center gap-1 font-mono text-[11px] font-black tracking-wider text-emerald-950 mt-1">
+                  <QrCode className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>{ticket.customerCode}</span>
+                </div>
+                <div className="text-[9px] text-slate-500 text-center font-bold mt-0.5 leading-tight">
                   {lang === 'uz'
-                    ? 'Keyingi tashrifda 5%-15% chegirma yoki do‘stga bonus beradi'
-                    : 'Скидка 5%-15% при следующем визите или бонус другу'}
+                    ? '📷 Keyingi tashrifda chegirma olish uchun ushbu QR-kodni kiosk kamerasiga ko‘rsating'
+                    : '📷 Покажите этот QR-код камере киоска для скидки при следующем визите'}
                 </div>
               </div>
             )}
@@ -138,19 +162,7 @@ export function ThermalTicketModal({ ticketData, onClose, lang = 'uz' }) {
 
           {/* Barcode & Warning */}
           <div className="text-center">
-            {/* Simulated barcode graphic */}
-            <div className="flex justify-center items-center gap-[2px] h-8 my-2 px-2 overflow-hidden">
-              {[4, 2, 5, 2, 6, 3, 2, 4, 3, 5, 2, 3, 6, 2, 4, 2, 5, 3, 4, 2, 6, 3, 2, 5, 4, 2, 3, 6, 3].map(
-                (w, idx) => (
-                  <div
-                    key={idx}
-                    className="bg-slate-900 h-full"
-                    style={{ width: `${w * 0.7}px` }}
-                  ></div>
-                )
-              )}
-            </div>
-            <div className="text-[10px] tracking-widest text-slate-500 font-bold mb-2">
+            <div className="text-[10px] tracking-widest text-slate-500 font-bold mb-1">
               *{ticket.ticketNumber}*
             </div>
             <p className="text-[10px] text-slate-600 leading-tight">

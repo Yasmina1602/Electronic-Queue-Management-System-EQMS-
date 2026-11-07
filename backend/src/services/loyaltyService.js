@@ -10,13 +10,43 @@ export function generateAnonymousCode(prefix = 'QR') {
 }
 
 /**
- * Calculate discount based on visits count
- * 3 visits -> 5%, 5 visits -> 10%, 10 visits -> 15%
+ * Dynamic loyalty discount tiers (Superadmin va Admin tomonidan sozlanadi)
+ */
+let dynamicTiers = [
+  { min_visits: 10, discount_percent: 15 },
+  { min_visits: 5, discount_percent: 10 },
+  { min_visits: 3, discount_percent: 5 },
+];
+
+export async function refreshLoyaltyTiersCache() {
+  try {
+    const res = await query(
+      `SELECT min_visits, discount_percent FROM loyalty_tiers WHERE active = true ORDER BY min_visits DESC`
+    );
+    if (res.rows.length > 0) {
+      dynamicTiers = res.rows.map((r) => ({
+        min_visits: Number(r.min_visits),
+        discount_percent: Number(r.discount_percent),
+      }));
+    }
+  } catch (err) {
+    // fallback defaults
+  }
+}
+
+// Initial cache load
+refreshLoyaltyTiersCache().catch(() => {});
+
+/**
+ * Calculate discount based on visits count and active loyalty tiers
  */
 export function calculateDiscount(visitsCount) {
-  if (visitsCount >= 10) return 15;
-  if (visitsCount >= 5) return 10;
-  if (visitsCount >= 3) return 5;
+  const v = Number(visitsCount) || 0;
+  for (const tier of dynamicTiers) {
+    if (v >= tier.min_visits) {
+      return tier.discount_percent;
+    }
+  }
   return 0;
 }
 

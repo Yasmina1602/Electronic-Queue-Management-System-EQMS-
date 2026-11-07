@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 
 export function KioskView() {
-  const { services, branches, activeBranchId, createTicket, tickets } = useQueue();
+  const { services, branches, activeBranchId, createTicket, tickets, loyaltyTiers = [] } = useQueue();
   const [ticketData, setTicketData] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState(null);
@@ -47,8 +47,44 @@ export function KioskView() {
 
   const activeBranch = branches.find((b) => b.id === activeBranchId) || branches[0];
 
-  // Barcha faol bo'limlar (Superadmin qo'shgan yangi bo'limlar ham chiqadi)
-  const activeServices = services.filter((s) => s.active !== false);
+  // Barcha faol bo'limlar: Kioskda ketma-ketlik (display_order) bo'yicha tartiblangan!
+  const activeServices = services
+    .filter((s) => s.active !== false)
+    .sort((a, b) => {
+      const orderA = Number(a.display_order ?? a.displayOrder ?? 999);
+      const orderB = Number(b.display_order ?? b.displayOrder ?? 999);
+      if (orderA !== orderB) return orderA - orderB;
+      return (Number(b.priority_weight) || 1) - (Number(a.priority_weight) || 1);
+    });
+
+  // Rus va O'zbek tillari uchun xizmat nomi va tavsifi tarjimasi
+  const getLocalizedServiceName = (service) => {
+    if (lang === 'uz') return service.name;
+    if (service.name_ru) return service.name_ru;
+    const nameLower = (service.name || '').toLowerCase();
+    if (nameLower.includes('buxg') || service.prefix === 'B') return 'Бухгалтерия и юр. лица';
+    if (nameLower.includes('it') || nameLower.includes('dastur') || service.prefix === 'I') return 'IT-услуги и техподдержка';
+    if (nameLower.includes('kredit')) return 'Кредитование и ипотека';
+    if (nameLower.includes('kassa')) return 'Касса и валютные операции';
+    if (nameLower.includes('xizmat') || service.prefix === 'X') return 'Общие банковские услуги';
+    return service.name;
+  };
+
+  const getLocalizedServiceDescription = (service) => {
+    if (lang === 'uz') return service.description || 'Navbat olish uchun bosing';
+    if (service.description_ru) return service.description_ru;
+    const nameLower = (service.name || '').toLowerCase();
+    if (nameLower.includes('buxg') || service.prefix === 'B') return 'Бухгалтерские услуги, сверка счетов и отчетность';
+    if (nameLower.includes('it') || service.prefix === 'I') return 'IT, программное обеспечение, компьютеры и настройка';
+    if (nameLower.includes('kredit')) return 'Потребительские кредиты, ипотека и консультации';
+    if (nameLower.includes('kassa')) return 'Платежи, обмен валюты и кассовые операции';
+    if (nameLower.includes('xizmat') || service.prefix === 'X') return 'Касса, кредиты, вклады, банковские карты';
+    return 'Нажмите для получения талона электронной очереди';
+  };
+
+  const activeTiersList = loyaltyTiers.filter((t) => t.active !== false);
+  const minDiscount = activeTiersList.length > 0 ? Math.min(...activeTiersList.map((t) => Number(t.discount_percent) || 5)) : 5;
+  const maxDiscount = activeTiersList.length > 0 ? Math.max(...activeTiersList.map((t) => Number(t.discount_percent) || 15)) : 15;
 
   const getServiceIcon = (srv) => {
     const nameLower = (srv.name || '').toLowerCase();
@@ -362,10 +398,10 @@ export function KioskView() {
 
                     <div className="my-auto py-1">
                       <h3 className="text-base sm:text-lg font-black text-emerald-950 group-hover:text-emerald-800 transition-colors line-clamp-1 leading-snug">
-                        {service.name}
+                        {getLocalizedServiceName(service)}
                       </h3>
                       <p className="text-[11px] sm:text-xs font-medium text-slate-600 mt-1 line-clamp-2 leading-relaxed">
-                        {service.description || (lang === 'uz' ? 'Navbat olish uchun bosing' : 'Нажмите для получения талона')}
+                        {getLocalizedServiceDescription(service)}
                       </p>
                     </div>
 
@@ -394,12 +430,12 @@ export function KioskView() {
               <div className="text-left">
                 <div className="text-xs sm:text-sm font-black flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
-                  {lang === 'uz' ? 'Sodiqlik QR-kod yoki Do‘st kodi bormi?' : 'Есть карта лояльности или QR код?'}
+                  {lang === 'uz' ? 'Sodiqlik QR-kod yoki Do‘st kodi bormi?' : 'Есть карта лояльности или промокод?'}
                 </div>
                 <div className="text-[11px] text-emerald-100 font-medium">
                   {lang === 'uz'
-                    ? 'Chegirma (5% - 15%) yoki referral bonusi olish uchun bosing'
-                    : 'Нажмите для применения скидки (5% - 15%) или реферального бонуса'}
+                    ? `Chegirma (${minDiscount}% - ${maxDiscount}%) yoki referral bonusi olish uchun bosing`
+                    : `Скидка (${minDiscount}% - ${maxDiscount}%) или бонус при каждом визите`}
                 </div>
               </div>
             </div>
